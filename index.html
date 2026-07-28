@@ -334,11 +334,14 @@
         const faceImg = new Image();
         faceImg.src = "IMG-20260219-WA0012.png";
         
-        canvas.addEventListener('mousemove', (e) => {
+
+        canvas.addEventListener('touchmove', (e) => {
             if(!gameActive) return;
+            e.preventDefault(); // <-- DIESE ZEILE MUSS DA STEHEN
             const rect = canvas.getBoundingClientRect();
-            player.x = (e.clientX - rect.left) * (canvas.width / rect.width) - (player.w / 2);
-        });
+            const touch = e.touches[0];
+            player.x = (touch.clientX - rect.left) * (canvas.width / rect.width) - (player.w / 2);
+        }, { passive: false }); // <-- WICHTIG: { passive: false }
 
         function resetGameParams() {
             items = [];
@@ -384,7 +387,7 @@
             if (faceImg.complete) ctx.drawImage(faceImg, player.x, player.y, player.w, player.h);
             items.forEach((item, i) => {
                 item.y += 2;
-                ctx.fillText("🥙", item.x, item.y + 24);
+                ctx.fillText("🥙", item.x, item.y + 35);
                 if (item.y > 250 && item.y < 300 && item.x > player.x && item.x < player.x + player.w) { items.splice(i, 1); score += 10; }
                 if (item.y > 300) gameOver();
             });
