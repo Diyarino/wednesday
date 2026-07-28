@@ -162,419 +162,213 @@
         // --- KONFIGURATION & DATEN ---
         const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzvrm0q_u-faDzxZmTm-TSQFssW_e3CU_ti7nxILCryfWUjv-qD8pHKTuwF1cblATLc/exec'; // <--- WICHTIG!
         const persons = ["Manuel", "Niklas", "David", "Diyar"];
-        let stammtischData = {};
-        let highscores = [];
+let stammtischData = {};
+let highscores = [];
 
-        // Daten beim Start laden
-        async function loadAllData() {
-            try {
-                const response = await fetch(GOOGLE_SCRIPT_URL);
-                const data = await response.json();
-                stammtischData = data.stammtisch || {};
-                highscores = data.highscores || [];
-                renderCalendar();
-                renderHighscores();
-            } catch (e) {
-                alert("Fehler beim Laden der Daten. Bitte prüfe die URL.");
-            }
-        }
-        
-        // Daten speichern (an Google senden)
-        async function saveToSheet(key, value) {
-            try {
-                await fetch(GOOGLE_SCRIPT_URL, {
-                    method: 'POST',
-                    body: JSON.stringify({ key: key, value: value })
-                });
-            } catch (e) {
-                alert("Fehler beim Speichern!");
-            }
-        }
-        
-        // --- KALENDER LOGIK ---
-        let currentDate = new Date();
-        let selectedDateStr = "";
+// --- DATENBANK VERBINDUNG ---
+async function loadAllData() {
+    try {
+        const response = await fetch(GOOGLE_SCRIPT_URL);
+        const data = await response.json();
+        stammtischData = data.stammtisch || {};
+        highscores = data.highscores || [];
+        renderCalendar();
+        renderHighscores();
+    } catch (e) {
+        console.error("Fehler beim Laden:", e);
+    }
+}
 
-        function renderCalendar() {
-            const grid = document.getElementById('calendarGrid');
-            const monthYear = document.getElementById('monthYear');
-            grid.innerHTML = '';
-            
-            const year = currentDate.getFullYear();
-            const month = currentDate.getMonth();
-            
-            monthYear.innerText = new Date(year, month).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
-            
-            const firstDay = new Date(year, month, 1).getDay();
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
-            
-            let startOffset = firstDay === 0 ? 6 : firstDay - 1;
-
-            for (let i = 0; i < startOffset; i++) {
-                grid.innerHTML += `<div></div>`;
-            }
-
-            for (let day = 1; day <= daysInMonth; day++) {
-                const date = new Date(year, month, day);
-                const isWednesday = date.getDay() === 3;
-                
-                // Datum formatieren für Key (Lokale Zeitzone fix)
-                const d = String(date.getDate()).padStart(2, '0');
-                const m = String(date.getMonth() + 1).padStart(2, '0');
-                const y = date.getFullYear();
-                const dateStr = `${y}-${m}-${d}`;
-
-                const entry = stammtischData[dateStr];
-                
-                let classes = "w-10 h-10 mx-auto flex items-center justify-center rounded-full text-sm font-semibold transition-all ";
-                
-                if (isWednesday) {
-                    if (entry) {
-                        if (entry.skipped) {
-                            // Übersprungen
-                            classes += "bg-slate-200 text-slate-500 shadow-sm cursor-pointer hover:bg-slate-300 ring-2 ring-slate-300 ring-offset-2 opacity-60";
-                        } else {
-                            // Stattgefunden
-                            classes += "bg-indigo-600 text-white shadow-md cursor-pointer hover:bg-indigo-700 hover:scale-105 ring-2 ring-indigo-200 ring-offset-2";
-                        }
-                    } else {
-                        // Noch kein Eintrag
-                        classes += "bg-indigo-50 text-indigo-500 cursor-pointer hover:bg-indigo-100 border border-indigo-100 hover:scale-105";
-                    }
-                } else {
-                    classes += "text-slate-500 font-normal";
-                }
-
-                grid.innerHTML += `
-                    <div class="py-1">
-                        <div class="${classes}" ${isWednesday ? `onclick="openModal('${dateStr}')"` : ''}>
-                            ${day}
-                        </div>
-                    </div>
-                `;
-            }
-            updateSummary();
-            renderTable();
-        }
-
-        function changeMonth(offset) {
-            currentDate.setMonth(currentDate.getMonth() + offset);
-            renderCalendar();
-        }
-
-        // --- MODAL & EINGABE LOGIK ---
-        function openModal(dateStr) {
-            selectedDateStr = dateStr;
-            const entry = stammtischData[dateStr] || { skipped: false, reason: "", attended: [...persons], payer: persons[0] };
-            
-            // Datum schön formatieren
-            const parts = dateStr.split('-');
-            const displayDate = new Date(parts[0], parts[1]-1, parts[2]);
-            document.getElementById('modalDateDisplay').innerText = displayDate.toLocaleDateString('de-DE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-            
-            // Checkbox "Übersprungen"
-            document.getElementById('skipCheckbox').checked = entry.skipped || false;
-            document.getElementById('skipReason').value = entry.reason || "";
-            
-            // Checkboxes generieren
-            const boxContainer = document.getElementById('attendanceBoxes');
-            boxContainer.innerHTML = '';
-            persons.forEach(person => {
-                const isChecked = (entry.attended && entry.attended.includes(person)) ? 'checked' : '';
-                boxContainer.innerHTML += `
-                    <label class="flex items-center space-x-3 p-2 rounded hover:bg-slate-200 cursor-pointer transition-colors">
-                        <input type="checkbox" value="${person}" class="attendance-check w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" ${isChecked}>
-                        <span class="text-slate-700 font-medium">${person}</span>
-                    </label>
-                `;
-            });
-
-            // Select generieren
-            const selectContainer = document.getElementById('payerSelect');
-            selectContainer.innerHTML = '';
-            persons.forEach(person => {
-                const isSelected = entry.payer === person ? 'selected' : '';
-                selectContainer.innerHTML += `<option value="${person}" ${isSelected}>${person}</option>`;
-            });
-
-            toggleSkipMode();
-            document.getElementById('entryModal').classList.remove('hidden');
-        }
-
-        function toggleSkipMode() {
-            const isSkipped = document.getElementById('skipCheckbox').checked;
-            if (isSkipped) {
-                document.getElementById('standardSection').classList.add('hidden');
-                document.getElementById('reasonSection').classList.remove('hidden');
-            } else {
-                document.getElementById('standardSection').classList.remove('hidden');
-                document.getElementById('reasonSection').classList.add('hidden');
-            }
-        }
-
-        function closeModal() {
-            document.getElementById('entryModal').classList.add('hidden');
-        }
-
-        function saveEntry() {
-            const isSkipped = document.getElementById('skipCheckbox').checked;
-            
-            if (isSkipped) {
-                const reason = document.getElementById('skipReason').value.trim();
-                stammtischData[selectedDateStr] = { skipped: true, reason: reason, attended: [], payer: "" };
-            } else {
-                const checkboxes = document.querySelectorAll('.attendance-check:checked');
-                const attended = Array.from(checkboxes).map(cb => cb.value);
-                const payer = document.getElementById('payerSelect').value;
-                stammtischData[selectedDateStr] = { skipped: false, reason: "", attended, payer };
-            }
-
-            await saveToSheet('stammtisch', stammtischData);
-            
-            closeModal();
-            renderCalendar();
-        }
-
-        function updateSummary() {
-            const summaryContainer = document.getElementById('summaryContainer');
-            summaryContainer.innerHTML = '';
-            
-            let stats = {};
-            persons.forEach(p => stats[p] = { attended: 0, paid: 0 });
-
-            Object.values(stammtischData).forEach(entry => {
-                if(!entry.skipped) {
-                    entry.attended.forEach(p => { if(stats[p]) stats[p].attended++; });
-                    if(stats[entry.payer]) stats[entry.payer].paid++;
-                }
-            });
-
-            persons.forEach(person => {
-                summaryContainer.innerHTML += `
-                    <div class="flex justify-between items-center bg-white p-3 rounded-xl shadow-sm border border-slate-100">
-                        <span class="font-bold text-slate-800">${person}</span>
-                        <div class="text-sm space-x-4 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
-                            <span class="text-slate-500">Da: <b class="text-slate-800">${stats[person].attended}x</b></span>
-                            <span class="text-slate-500">Bezahlt: <b class="text-indigo-600">${stats[person].paid}x</b></span>
-                        </div>
-                    </div>
-                `;
-            });
-        }
-
-        // --- VERLAUFSTABELLE LOGIK ---
-        function renderTable() {
-            const tbody = document.getElementById('historyTableBody');
-            tbody.innerHTML = '';
-
-            const dates = Object.keys(stammtischData).sort((a, b) => new Date(b) - new Date(a)); // Neueste zuerst
-
-            if(dates.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-slate-400">Noch keine Einträge vorhanden.</td></tr>`;
-                return;
-            }
-
-            dates.forEach(dateStr => {
-                const entry = stammtischData[dateStr];
-                
-                // Datum Formatieren
-                const parts = dateStr.split('-');
-                const displayDate = new Date(parts[0], parts[1]-1, parts[2]).toLocaleDateString('de-DE', { year: 'numeric', month: '2-digit', day: '2-digit' });
-
-                if (entry.skipped) {
-                    tbody.innerHTML += `
-                        <tr class="hover:bg-slate-50 transition-colors bg-slate-50/50 text-slate-500">
-                            <td class="px-4 py-3 font-medium">${displayDate}</td>
-                            <td class="px-4 py-3"><span class="bg-slate-200 text-slate-600 px-2 py-1 rounded-md text-xs font-bold uppercase tracking-wide">Ausgefallen</span></td>
-                            <td class="px-4 py-3">-</td>
-                            <td class="px-4 py-3">-</td>
-                            <td class="px-4 py-3 italic">${entry.reason || "Keine Begründung"}</td>
-                        </tr>
-                    `;
-                } else {
-                    const attendeesStr = entry.attended.length > 0 ? entry.attended.join(', ') : '<span class="text-red-400 italic">Niemand</span>';
-                    tbody.innerHTML += `
-                        <tr class="hover:bg-slate-50 transition-colors">
-                            <td class="px-4 py-3 font-medium text-slate-900">${displayDate}</td>
-                            <td class="px-4 py-3"><span class="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-md text-xs font-bold uppercase tracking-wide">Stattgefunden</span></td>
-                            <td class="px-4 py-3">${attendeesStr}</td>
-                            <td class="px-4 py-3 font-semibold text-indigo-600">${entry.payer}</td>
-                            <td class="px-4 py-3 text-slate-400">-</td>
-                        </tr>
-                    `;
-                }
-            });
-        }
-
-        // --- JSON EXPORT ---
-        function exportJSON() {
-            const dataToSave = {
-                stammtisch: stammtischData,
-                catchTheDoenerHighscores: highscores
-            };
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dataToSave, null, 2));
-            const downloadAnchorNode = document.createElement('a');
-            downloadAnchorNode.setAttribute("href", dataStr);
-            downloadAnchorNode.setAttribute("download", "happy_wednesdays_backup.json");
-            document.body.appendChild(downloadAnchorNode); 
-            downloadAnchorNode.click();
-            downloadAnchorNode.remove();
-        }
-
-        // --- CATCH THE DÖNER SPIEL ---
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        let gameLoop, gameActive = false;
-        
-        // Spieler Eigenschaften (Größe des Gesichts)
-        let player = { x: 175, y: 250, w: 50, h: 50, speed: 20 };
-        let items = [];
-        let score = 0;
-        let difficulty = 2;
-        let currentPlayerName = "";
-
-        // BILD FÜR DAS GESICHT LADEN
-        const faceImg = new Image();
-        // HIER KANNST DU DEIN BILD EINTRAGEN:
-        faceImg.src = "IMG-20260219-WA0012.png";
-        //faceImg.src = "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix&backgroundColor=b6e3f4"; 
-
-        canvas.addEventListener('mousemove', (e) => {
-            if(!gameActive) return;
-            const rect = canvas.getBoundingClientRect();
-            // X-Koordinate skalieren (falls Canvas per CSS responsiv verkleinert wird)
-            const scaleX = canvas.width / rect.width;
-            player.x = (e.clientX - rect.left) * scaleX - (player.w / 2);
-            
-            if (player.x < 0) player.x = 0;
-            if (player.x + player.w > canvas.width) player.x = canvas.width - player.w;
+async function saveToSheet(key, value) {
+    try {
+        await fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            body: JSON.stringify({ key: key, value: value })
         });
+    } catch (e) {
+        console.error("Fehler beim Speichern:", e);
+    }
+}
 
-        // Touch Support
-        canvas.addEventListener('touchmove', (e) => {
-            if(!gameActive) return;
-            e.preventDefault();
-            const rect = canvas.getBoundingClientRect();
-            const scaleX = canvas.width / rect.width;
-            player.x = (e.touches[0].clientX - rect.left) * scaleX - (player.w / 2);
-            
-            if (player.x < 0) player.x = 0;
-            if (player.x + player.w > canvas.width) player.x = canvas.width - player.w;
-        }, { passive: false });
+// --- KALENDER LOGIK ---
+let currentDate = new Date();
+let selectedDateStr = "";
 
-        function startGame() {
-            const nameInput = document.getElementById('playerName').value.trim();
-            if (!nameInput) {
-                alert("Bitte Namen eintragen!");
-                return;
-            }
-            currentPlayerName = nameInput;
-            resetGameParams();
-            document.getElementById('gameOverScreen').classList.add('hidden');
-            gameActive = true;
-            loop();
-        }
+function renderCalendar() {
+    const grid = document.getElementById('calendarGrid');
+    const monthYear = document.getElementById('monthYear');
+    grid.innerHTML = '';
+    
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    
+    monthYear.innerText = new Date(year, month).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
+    
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    
+    let startOffset = firstDay === 0 ? 6 : firstDay - 1;
 
-        function resetGameParams() {
-            items = [];
-            score = 0;
-            difficulty = 2;
-            player.x = 175;
-        }
+    for (let i = 0; i < startOffset; i++) grid.innerHTML += `<div></div>`;
 
-        function spawnItem() {
-            if (Math.random() < 0.05) { // Spawn Rate
-                items.push({ x: Math.random() * (canvas.width - 30), y: -30, w: 30, h: 30 });
-            }
-        }
-
-        function gameOver() {
-            gameActive = false;
-            document.getElementById('gameOverScreen').classList.remove('hidden');
-            document.getElementById('finalScore').innerText = score;
-            
-            highscores.push({ name: currentPlayerName, score: score, date: new Date().toLocaleDateString('de-DE') });
-            highscores.sort((a, b) => b.score - a.score);
-            highscores = highscores.slice(0, 5); // Top 5 behalten
-            await saveToSheet('highscores', highscores);
-            renderHighscores();
-        }
-
-        function resetGame() {
-            startGame();
-        }
-
-        function renderHighscores() {
-            const list = document.getElementById('highscoreList');
-            list.innerHTML = '';
-            if (highscores.length === 0) {
-                list.innerHTML = '<li class="text-sm text-slate-400 p-4 bg-slate-50 rounded-lg border border-slate-100 text-center">Noch keine Scores!</li>';
-            }
-            highscores.forEach((entry, i) => {
-                list.innerHTML += `
-                    <li class="flex justify-between items-center bg-white p-3 rounded-lg border border-slate-100 shadow-sm">
-                        <div class="flex items-center space-x-3">
-                            <span class="flex items-center justify-center w-6 h-6 rounded-full ${i === 0 ? 'bg-amber-400 text-white' : i === 1 ? 'bg-slate-300 text-white' : i === 2 ? 'bg-amber-700 text-white' : 'bg-slate-100 text-slate-500'} font-bold text-xs">${i+1}</span>
-                            <span class="font-semibold text-slate-700">${entry.name}</span>
-                        </div>
-                        <div class="text-right">
-                            <div class="font-black text-indigo-600 text-lg leading-none">${entry.score}</div>
-                            <div class="text-[10px] text-slate-400 mt-1">${entry.date || ''}</div>
-                        </div>
-                    </li>
-                `;
-            });
-        }
-
-        function loop() {
-            if (!gameActive) return;
-
-            // Clear Canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Draw Player (Gesicht Bild)
-            // Wenn das Bild geladen ist, zeichne es. Sonst zeichne ein Rechteck als Fallback.
-            if (faceImg.complete) {
-                ctx.drawImage(faceImg, player.x, player.y, player.w, player.h);
+    for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(year, month, day);
+        const isWednesday = date.getDay() === 3;
+        const d = String(date.getDate()).padStart(2, '0');
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const y = date.getFullYear();
+        const dateStr = `${y}-${m}-${d}`;
+        const entry = stammtischData[dateStr];
+        
+        let classes = "w-10 h-10 mx-auto flex items-center justify-center rounded-full text-sm font-semibold transition-all ";
+        if (isWednesday) {
+            if (entry) {
+                classes += entry.skipped ? "bg-slate-200 text-slate-500 opacity-60" : "bg-indigo-600 text-white shadow-md hover:bg-indigo-700";
             } else {
-                ctx.fillStyle = '#4f46e5';
-                ctx.beginPath();
-                ctx.roundRect(player.x, player.y, player.w, player.h, 5);
-                ctx.fill();
+                classes += "bg-indigo-50 text-indigo-500 hover:bg-indigo-100 border border-indigo-100";
             }
-
-            // Spawn & Update Items (Döner)
-            spawnItem();
-            for (let i = 0; i < items.length; i++) {
-                let item = items[i];
-                item.y += difficulty;
-
-                // Draw Döner
-                ctx.font = "28px Arial";
-                ctx.fillText("🥙", item.x, item.y + 24);
-
-                // Collision Detection (Hitbox leicht angepasst für Emojis/Bild)
-                if (item.y + item.h - 10 >= player.y && item.y <= player.y + player.h &&
-                    item.x + item.w >= player.x && item.x <= player.x + player.w) {
-                    items.splice(i, 1);
-                    score += 10;
-                    if (score % 50 === 0) difficulty += 0.5; // Erhöht Geschwindigkeit
-                    i--;
-                } 
-                // Missed (Fällt aus dem Bild)
-                else if (item.y > canvas.height) {
-                    gameOver();
-                    return;
-                }
-            }
-
-            // Draw Score Info im Canvas
-            ctx.fillStyle = '#334155';
-            ctx.font = "900 20px Inter, sans-serif";
-            ctx.fillText("Score: " + score, 15, 30);
-
-            requestAnimationFrame(loop);
+        } else {
+            classes += "text-slate-500 font-normal";
         }
+        grid.innerHTML += `<div class="py-1"><div class="${classes} cursor-pointer" ${isWednesday ? `onclick="openModal('${dateStr}')"` : ''}>${day}</div></div>`;
+    }
+    updateSummary();
+    renderTable();
+}
+
+function changeMonth(offset) {
+    currentDate.setMonth(currentDate.getMonth() + offset);
+    renderCalendar();
+}
+
+// --- MODAL & EINGABE LOGIK ---
+function openModal(dateStr) {
+    selectedDateStr = dateStr;
+    const entry = stammtischData[dateStr] || { skipped: false, reason: "", attended: [...persons], payer: persons[0] };
+    const parts = dateStr.split('-');
+    const displayDate = new Date(parts[0], parts[1]-1, parts[2]);
+    document.getElementById('modalDateDisplay').innerText = displayDate.toLocaleDateString('de-DE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    
+    document.getElementById('skipCheckbox').checked = entry.skipped || false;
+    document.getElementById('skipReason').value = entry.reason || "";
+    
+    const boxContainer = document.getElementById('attendanceBoxes');
+    boxContainer.innerHTML = '';
+    persons.forEach(person => {
+        const isChecked = (entry.attended && entry.attended.includes(person)) ? 'checked' : '';
+        boxContainer.innerHTML += `<label class="flex items-center space-x-3 p-2 rounded hover:bg-slate-200 cursor-pointer"><input type="checkbox" value="${person}" class="attendance-check w-4 h-4 text-indigo-600 rounded border-slate-300" ${isChecked}><span class="text-slate-700 font-medium">${person}</span></label>`;
+    });
+
+    const selectContainer = document.getElementById('payerSelect');
+    selectContainer.innerHTML = '';
+    persons.forEach(person => {
+        selectContainer.innerHTML += `<option value="${person}" ${entry.payer === person ? 'selected' : ''}>${person}</option>`;
+    });
+
+    toggleSkipMode();
+    document.getElementById('entryModal').classList.remove('hidden');
+}
+
+function toggleSkipMode() {
+    const isSkipped = document.getElementById('skipCheckbox').checked;
+    document.getElementById('standardSection').classList.toggle('hidden', isSkipped);
+    document.getElementById('reasonSection').classList.toggle('hidden', !isSkipped);
+}
+
+function closeModal() { document.getElementById('entryModal').classList.add('hidden'); }
+
+async function saveEntry() {
+    const isSkipped = document.getElementById('skipCheckbox').checked;
+    if (isSkipped) {
+        stammtischData[selectedDateStr] = { skipped: true, reason: document.getElementById('skipReason').value.trim(), attended: [], payer: "" };
+    } else {
+        const attended = Array.from(document.querySelectorAll('.attendance-check:checked')).map(cb => cb.value);
+        stammtischData[selectedDateStr] = { skipped: false, reason: "", attended, payer: document.getElementById('payerSelect').value };
+    }
+    await saveToSheet('stammtisch', stammtischData);
+    closeModal();
+    renderCalendar();
+}
+
+function updateSummary() {
+    const summaryContainer = document.getElementById('summaryContainer');
+    summaryContainer.innerHTML = '';
+    let stats = {};
+    persons.forEach(p => stats[p] = { attended: 0, paid: 0 });
+    Object.values(stammtischData).forEach(entry => {
+        if(!entry.skipped) {
+            entry.attended.forEach(p => { if(stats[p]) stats[p].attended++; });
+            if(stats[entry.payer]) stats[entry.payer].paid++;
+        }
+    });
+    persons.forEach(person => {
+        summaryContainer.innerHTML += `<div class="flex justify-between items-center bg-white p-3 rounded-xl border border-slate-100"><span class="font-bold text-slate-800">${person}</span><div class="text-sm space-x-4 bg-slate-50 px-3 py-1.5 rounded-lg"><span class="text-slate-500">Da: <b>${stats[person].attended}x</b></span><span class="text-slate-500">Bezahlt: <b class="text-indigo-600">${stats[person].paid}x</b></span></div></div>`;
+    });
+}
+
+function renderTable() {
+    const tbody = document.getElementById('historyTableBody');
+    tbody.innerHTML = '';
+    const dates = Object.keys(stammtischData).sort((a, b) => new Date(b) - new Date(a));
+    dates.forEach(dateStr => {
+        const entry = stammtischData[dateStr];
+        const parts = dateStr.split('-');
+        const displayDate = new Date(parts[0], parts[1]-1, parts[2]).toLocaleDateString('de-DE', { year: 'numeric', month: '2-digit', day: '2-digit' });
+        tbody.innerHTML += `<tr><td class="px-4 py-3 font-medium">${displayDate}</td><td class="px-4 py-3"><span class="${entry.skipped ? 'bg-slate-200' : 'bg-emerald-100'} px-2 py-1 rounded text-xs font-bold uppercase">${entry.skipped ? 'Ausgefallen' : 'Stattgefunden'}</span></td><td class="px-4 py-3">${entry.skipped ? '-' : entry.attended.join(', ')}</td><td class="px-4 py-3">${entry.skipped ? '-' : entry.payer}</td><td class="px-4 py-3 italic">${entry.reason || '-'}</td></tr>`;
+    });
+}
+
+function exportJSON() {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({stammtisch: stammtischData, highscores: highscores}, null, 2));
+    const a = document.createElement('a'); a.href = dataStr; a.download = "backup.json"; a.click();
+}
+
+// --- SPIEL LOGIK ---
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+let gameActive = false;
+let player = { x: 175, y: 250, w: 50, h: 50 };
+let items = [];
+let score = 0;
+const faceImg = new Image();
+faceImg.src = "IMG-20260219-WA0012.png";
+
+canvas.addEventListener('mousemove', (e) => {
+    if(!gameActive) return;
+    const rect = canvas.getBoundingClientRect();
+    player.x = (e.clientX - rect.left) * (canvas.width / rect.width) - (player.w / 2);
+});
+
+async function gameOver() {
+    gameActive = false;
+    document.getElementById('gameOverScreen').classList.remove('hidden');
+    document.getElementById('finalScore').innerText = score;
+    highscores.push({ name: document.getElementById('playerName').value, score: score, date: new Date().toLocaleDateString('de-DE') });
+    highscores.sort((a, b) => b.score - a.score);
+    highscores = highscores.slice(0, 5);
+    await saveToSheet('highscores', highscores);
+    renderHighscores();
+}
+
+function renderHighscores() {
+    const list = document.getElementById('highscoreList');
+    list.innerHTML = '';
+    highscores.forEach((entry, i) => list.innerHTML += `<li class="flex justify-between p-3 bg-white border border-slate-100 rounded-lg"><span>${i+1}. ${entry.name}</span><span class="font-bold text-indigo-600">${entry.score}</span></li>`);
+}
+
+function loop() {
+    if (!gameActive) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (faceImg.complete) ctx.drawImage(faceImg, player.x, player.y, player.w, player.h);
+    items.forEach((item, i) => {
+        item.y += 2;
+        ctx.fillText("🥙", item.x, item.y + 24);
+        if (item.y > 250 && item.y < 300 && item.x > player.x && item.x < player.x + player.w) { items.splice(i, 1); score += 10; }
+        if (item.y > 300) gameOver();
+    });
+    if (Math.random() < 0.05) items.push({ x: Math.random() * 370, y: -30 });
+    requestAnimationFrame(loop);
+}
 
         // Init App
         loadAllData();
