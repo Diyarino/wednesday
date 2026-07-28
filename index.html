@@ -7,32 +7,27 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f8fafc;
-        }
-        canvas {
-            display: block;
-            margin: 0 auto;
-            background: #e2e8f0;
-            border-radius: 0.75rem;
-            cursor: none;
-        }
-        /* Custom Scrollbar für die Tabelle */
-        .table-container::-webkit-scrollbar { height: 8px; }
-        .table-container::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        canvas { display: block; margin: 0 auto; background: #e2e8f0; border-radius: 0.75rem; cursor: none; }
+        
+        /* Animation Classes */
+        #welcomeOverlay { transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
+        #welcomeOverlay.slide-up { top: 2rem; transform: translateY(0); }
+        #mainContent { transition: opacity 1s ease-in-out; }
     </style>
 </head>
-<body class="text-slate-800 antialiased p-4 md:p-8">
+<body>
 
-    <div class="max-w-7xl mx-auto space-y-10">
+    <!-- Start-Animation Overlay -->
+    <div id="welcomeOverlay" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-50">
+        <h1 class="text-5xl md:text-6xl font-black text-slate-900 tracking-tighter">Happy Wednesdays Club</h1>
+    </div>
+
+    <!-- Hauptinhalt (anfangs unsichtbar) -->
+    <div id="mainContent" class="opacity-0 p-4 md:p-8 max-w-7xl mx-auto space-y-10">
         
-        <!-- Header -->
-        <header class="flex flex-col md:flex-row md:justify-between md:items-center pb-6 border-b border-slate-200 gap-4">
-            <div>
-                <h1 class="text-4xl font-bold tracking-tight text-slate-900">Happy Wednesdays Club</h1>
-                <p class="text-slate-500 mt-1">Stammtisch Organisation</p>
-            </div>
+        <!-- Header (jetzt ohne H1, da diese oben im Overlay ist) -->
+        <header class="flex flex-col md:flex-row md:justify-end md:items-center pb-6 border-b border-slate-200 gap-4 mt-20">
             <button onclick="exportJSON()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-lg shadow-sm font-medium transition-colors whitespace-nowrap">
                 💾 Daten als JSON exportieren
             </button>
@@ -130,13 +125,11 @@
                 <span class="font-semibold text-amber-900">Stammtisch fiel aus / übersprungen</span>
             </label>
 
-            <!-- Begründung (Sichtbar wenn übersprungen) -->
             <div id="reasonSection" class="hidden mb-6">
                 <label class="block text-sm font-semibold text-slate-700 mb-2">Warum ist es ausgefallen?</label>
                 <textarea id="skipReason" rows="3" placeholder="Z.B. Alle waren krank..." class="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 resize-none"></textarea>
             </div>
 
-            <!-- Standard Eingabe (Versteckt wenn übersprungen) -->
             <div id="standardSection">
                 <div class="mb-6">
                     <label class="block text-sm font-semibold text-slate-700 mb-3">Wer war da?</label>
@@ -159,7 +152,6 @@
 
     <script>
         // --- KONFIGURATION & DATEN ---
-        // --- KONFIGURATION & DATEN ---
         const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzvrm0q_u-faDzxZmTm-TSQFssW_e3CU_ti7nxILCryfWUjv-qD8pHKTuwF1cblATLc/exec'; // <--- WICHTIG!
         const persons = ["Manuel", "Niklas", "David", "Diyar"];
         let stammtischData = {};
@@ -167,6 +159,25 @@
         let currentPlayerName = "";
 
         // --- DATENBANK VERBINDUNG ---
+
+        async function initApp() {
+            // 1. Daten laden
+            await loadAllData();
+
+            // 2. Animation starten
+            const overlay = document.getElementById('welcomeOverlay');
+            const mainContent = document.getElementById('mainContent');
+
+            overlay.classList.add('slide-up');
+            
+            // Kurze Verzögerung für flüssigen Übergang
+            setTimeout(() => {
+                mainContent.style.opacity = "1";
+            }, 300);
+        }
+
+        // Starte alles
+        initApp();
         async function loadAllData() {
             try {
                 const response = await fetch(GOOGLE_SCRIPT_URL);
@@ -382,21 +393,35 @@
         }
         
         function loop() {
-            if (!gameActive) return;
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            if (faceImg.complete) ctx.drawImage(faceImg, player.x, player.y, player.w, player.h);
-            items.forEach((item, i) => {
-                item.y += 2;
-                ctx.font = "24px Arial"; 
-                ctx.fillText("🥙", item.x, item.y + 60);
-                if (item.y > 250 && item.y < 300 && item.x > player.x && item.x < player.x + player.w) { items.splice(i, 1); score += 10; }
-                if (item.y > 300) gameOver();
-            });
+    if (!gameActive) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Spieler: Zeichne Bild oder blaues Quadrat als Fallback
+    if (faceImg.complete && faceImg.naturalWidth !== 0) {
+        ctx.drawImage(faceImg, player.x, player.y, player.w, player.h);
+    } else {
+        ctx.fillStyle = '#4f46e5';
+        ctx.fillRect(player.x, player.y, player.w, player.h);
+    }
 
-            if (Math.random() < 0.02) items.push({ x: Math.random() * 370, y: -30 });
-            requestAnimationFrame(loop);
+    items.forEach((item, i) => {
+        item.y += 2;
+        // Döner größer machen:
+        ctx.font = "50px Arial"; 
+        ctx.fillText("🥙", item.x, item.y + 40);
+        
+        // Kollisions-Logik (dynamisch zum Spieler):
+        if (item.y > player.y - 40 && item.y < player.y + player.h && 
+            item.x > player.x - 30 && item.x < player.x + player.w) { 
+            items.splice(i, 1); 
+            score += 10; 
         }
+        if (item.y > 300) gameOver();
+    });
 
+    if (Math.random() < 0.02) items.push({ x: Math.random() * 370, y: -30 });
+    requestAnimationFrame(loop);
+}
         // Init App
         loadAllData();
     </script>
