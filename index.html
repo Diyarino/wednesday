@@ -159,10 +159,38 @@
 
     <script>
         // --- KONFIGURATION & DATEN ---
+        // --- KONFIGURATION & DATEN ---
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzvrm0q_u-faDzxZmTm-TSQFssW_e3CU_ti7nxILCryfWUjv-qD8pHKTuwF1cblATLc/exec'; // <--- WICHTIG!
         const persons = ["Manuel", "Niklas", "David", "Diyar"];
-        let stammtischData = JSON.parse(localStorage.getItem('stammtischData')) || {};
-        let highscores = JSON.parse(localStorage.getItem('catchTheDoenerScores')) || [];
+        let stammtischData = {};
+        let highscores = [];
 
+        // Daten beim Start laden
+        async function loadAllData() {
+            try {
+                const response = await fetch(GOOGLE_SCRIPT_URL);
+                const data = await response.json();
+                stammtischData = data.stammtisch || {};
+                highscores = data.highscores || [];
+                renderCalendar();
+                renderHighscores();
+            } catch (e) {
+                alert("Fehler beim Laden der Daten. Bitte prüfe die URL.");
+            }
+        }
+        
+        // Daten speichern (an Google senden)
+        async function saveToSheet(key, value) {
+            try {
+                await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ key: key, value: value })
+                });
+            } catch (e) {
+                alert("Fehler beim Speichern!");
+            }
+        }
+        
         // --- KALENDER LOGIK ---
         let currentDate = new Date();
         let selectedDateStr = "";
@@ -301,7 +329,7 @@
                 stammtischData[selectedDateStr] = { skipped: false, reason: "", attended, payer };
             }
 
-            localStorage.setItem('stammtischData', JSON.stringify(stammtischData));
+            await saveToSheet('stammtisch', stammtischData);
             
             closeModal();
             renderCalendar();
@@ -468,7 +496,7 @@
             highscores.push({ name: currentPlayerName, score: score, date: new Date().toLocaleDateString('de-DE') });
             highscores.sort((a, b) => b.score - a.score);
             highscores = highscores.slice(0, 5); // Top 5 behalten
-            localStorage.setItem('catchTheDoenerScores', JSON.stringify(highscores));
+            await saveToSheet('highscores', highscores);
             renderHighscores();
         }
 
@@ -549,8 +577,7 @@
         }
 
         // Init App
-        renderCalendar();
-        renderHighscores();
+        loadAllData();
     </script>
 </body>
 </html>
