@@ -6,15 +6,16 @@
     <title>Happy Wednesdays</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
-        canvas { display: block; margin: 0 auto; background: #e2e8f0; border-radius: 0.75rem; cursor: none; }
-        
-        /* Animation Classes */
-        #welcomeOverlay { transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
-        #welcomeOverlay.slide-up { top: 2rem; transform: translateY(0); }
-        #mainContent { transition: opacity 1s ease-in-out; }
-    </style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+    canvas { display: block; margin: 0 auto; background: #e2e8f0; border-radius: 0.75rem; cursor: none; }
+
+    #welcomeOverlay { 
+        transition: opacity 0.5s ease; 
+        opacity: 1;
+    }
+    #mainContent { transition: opacity 0.5s ease-in-out; }
+</style>
 </head>
 <body>
 
@@ -160,23 +161,29 @@
 
         // --- DATENBANK VERBINDUNG ---
 
-        async function initApp() {
-            // 1. Daten laden
-            await loadAllData();
-
-            // 2. Animation starten
-            const overlay = document.getElementById('welcomeOverlay');
-            const mainContent = document.getElementById('mainContent');
-
-            overlay.classList.add('slide-up');
-            
-            // Kurze Verzögerung für flüssigen Übergang
-            setTimeout(() => {
-                mainContent.style.opacity = "1";
-            }, 300);
-        }
-
         // Starte alles
+        async function initApp() {
+            const startTime = Date.now();
+            const dataLoad = loadAllData(); 
+            const elapsed = Date.now() - startTime;
+            if (elapsed < 3000) {
+                await new Promise(resolve => setTimeout(resolve, 3000 - elapsed));
+            }
+    
+            await dataLoad;
+            
+            // 4. Overlay ausblenden
+            const overlay = document.getElementById('welcomeOverlay');
+            overlay.style.opacity = '0';
+            
+            // 5. Overlay komplett entfernen, damit es nicht stört
+            setTimeout(() => {
+                overlay.style.display = 'none';
+                document.getElementById('mainContent').style.opacity = '1';
+            }, 500); // 500ms entspricht der CSS transition Zeit
+        }
+        
+        // Init App (dieser Aufruf bleibt am Ende deines Skripts)
         initApp();
         async function loadAllData() {
             try {
