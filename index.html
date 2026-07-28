@@ -387,7 +387,7 @@
             if (faceImg.complete) ctx.drawImage(faceImg, player.x, player.y, player.w, player.h);
             items.forEach((item, i) => {
                 item.y += 2;
-                ctx.font = "40px Arial"; 
+                ctx.font = "24px Arial"; 
                 ctx.fillText("🥙", item.x, item.y + 60);
                 if (item.y > 250 && item.y < 300 && item.x > player.x && item.x < player.x + player.w) { items.splice(i, 1); score += 10; }
                 if (item.y > 300) gameOver();
