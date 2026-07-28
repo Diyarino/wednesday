@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Happy Wednesdays</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
     body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
@@ -107,6 +108,14 @@
             </div>
         </div>
 
+        <!-- Chart Bereich -->
+        <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-100">
+            <h2 class="text-2xl font-semibold mb-6 text-slate-800">Statistik-Übersicht</h2>
+            <div class="h-64">
+                <canvas id="statsChart"></canvas>
+            </div>
+        </div>
+
     </div>
 
     <!-- Modal für Mittwochseingabe -->
@@ -177,6 +186,48 @@
         }
         initApp();
 
+
+        // Variable um das Chart zu speichern, damit wir es aktualisieren können
+        let myChart;
+        
+        function renderChart() {
+            const ctx = document.getElementById('statsChart').getContext('2d');
+            
+            // Daten vorbereiten
+            let attendanceCounts = persons.map(p => {
+                let count = 0;
+                Object.values(stammtischData).forEach(entry => {
+                    if(!entry.skipped && entry.attended.includes(p)) count++;
+                });
+                return count;
+            });
+        
+            // Falls schon ein Chart existiert, löschen (um Grafikfehler zu vermeiden)
+            if (myChart) myChart.destroy();
+        
+            // Chart erstellen
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: persons,
+                    datasets: [{
+                        label: 'Anwesenheit (x)',
+                        data: attendanceCounts,
+                        backgroundColor: '#4f46e5', // Dein Indigo-Farbton
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, grid: { display: false } },
+                        x: { grid: { display: false } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
         
         async function loadAllData() {
             try {
@@ -186,6 +237,7 @@
                 highscores = data.highscores || [];
                 renderCalendar();
                 renderHighscores();
+                renderChart();
             } catch (e) {
                 console.error("Fehler beim Laden:", e);
             }
