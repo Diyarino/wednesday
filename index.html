@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Happy Wednesdays</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+        canvas {
+            display: block;
+            margin: 0 auto;
+            background: #e2e8f0;
+            border-radius: 0.75rem;
+            cursor: none;
+        }
+        /* Custom Scrollbar für die Tabelle */
+        .table-container::-webkit-scrollbar { height: 8px; }
+        .table-container::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    </style>
+</head>
+<body class="text-slate-800 antialiased p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto space-y-10">
+        
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row md:justify-between md:items-center pb-6 border-b border-slate-200 gap-4">
+            <div>
+                <h1 class="text-4xl font-bold tracking-tight text-slate-900">Happy Wednesdays Club</h1>
+                <p class="text-slate-500 mt-1">Stammtisch Organisation</p>
+            </div>
+            <button onclick="exportJSON()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-lg shadow-sm font-medium transition-colors whitespace-nowrap">
+                💾 Daten als JSON exportieren
+            </button>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
+            
+            <!-- Linke Spalte: Kalender & Stats -->
+            <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-100 flex flex-col h-full">
+                <h2 class="text-2xl font-semibold mb-6">Kalender</h2>
+                
+                <div class="mb-4 flex justify-between items-center bg-slate-50 p-2 rounded-lg border border-slate-100">
+                    <button onclick="changeMonth(-1)" class="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-200 rounded-md transition-colors">&larr; Zurück</button>
+                    <span id="monthYear" class="font-semibold text-lg"></span>
+                    <button onclick="changeMonth(1)" class="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-200 rounded-md transition-colors">Weiter &rarr;</button>
+                </div>
+
+                <div class="grid grid-cols-7 gap-2 text-center text-sm mb-2 font-medium text-slate-400">
+                    <div>Mo</div><div>Di</div><div>Mi</div><div>Do</div><div>Fr</div><div>Sa</div><div>So</div>
+                </div>
+                <div id="calendarGrid" class="grid grid-cols-7 gap-2 text-center mb-8"></div>
+
+                <!-- Zusammenfassung (Stats) -->
+                <div class="mt-auto pt-6 border-t border-slate-100">
+                    <h3 class="text-lg font-semibold mb-4 text-slate-800">Statistik (Zusammenfassung)</h3>
+                    <div id="summaryContainer" class="space-y-3"></div>
+                </div>
+            </div>
+
+            <!-- Rechte Spalte: Catch the Döner -->
+            <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-100 flex flex-col h-full">
+                <h2 class="text-2xl font-semibold mb-6">Catch the Döner 🥙</h2>
+                
+                <div id="gameSetup" class="mb-6 flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
+                    <input type="text" id="playerName" placeholder="Dein Name..." class="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
+                    <button onclick="startGame()" class="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-2 rounded-lg font-medium shadow-sm transition-colors">
+                        Starten
+                    </button>
+                </div>
+
+                <div class="relative flex-grow flex items-center justify-center">
+                    <canvas id="gameCanvas" width="400" height="300" class="max-w-full h-auto"></canvas>
+                    <div id="gameOverScreen" class="hidden absolute inset-0 bg-slate-900/90 flex flex-col items-center justify-center rounded-xl text-white backdrop-blur-sm">
+                        <h3 class="text-3xl font-bold mb-2">Game Over</h3>
+                        <p class="mb-6 text-xl text-emerald-400">Score: <span id="finalScore" class="font-black">0</span></p>
+                        <button onclick="resetGame()" class="bg-indigo-500 hover:bg-indigo-600 px-6 py-3 rounded-xl font-semibold shadow-lg transition-transform hover:scale-105">Nochmal spielen</button>
+                    </div>
+                </div>
+
+                <div class="mt-8">
+                    <h3 class="text-lg font-semibold mb-4 text-slate-700 flex items-center justify-between">
+                        Highscores <span class="text-sm font-normal text-slate-400">Top 5</span>
+                    </h3>
+                    <ul id="highscoreList" class="space-y-2"></ul>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Volle Breite: Verlaufstabelle -->
+        <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-100">
+            <h2 class="text-2xl font-semibold mb-6 text-slate-800">Historie & Einträge</h2>
+            <div class="table-container overflow-x-auto">
+                <table class="min-w-full text-left text-sm whitespace-nowrap">
+                    <thead class="uppercase tracking-wider border-b-2 border-slate-200 text-slate-500 font-medium bg-slate-50">
+                        <tr>
+                            <th class="px-4 py-3 rounded-tl-lg">Datum</th>
+                            <th class="px-4 py-3">Status</th>
+                            <th class="px-4 py-3">Anwesend</th>
+                            <th class="px-4 py-3">Bezahlt von</th>
+                            <th class="px-4 py-3 rounded-tr-lg">Notiz / Begründung</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyTableBody" class="divide-y divide-slate-100">
+                        <!-- Wird per JS befüllt -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Modal für Mittwochseingabe -->
+    <div id="entryModal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div class="bg-white p-6 md:p-8 rounded-2xl shadow-2xl max-w-md w-full relative">
+            <button onclick="closeModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-700 p-2">
+                ✕
+            </button>
+            <h3 class="text-xl font-bold mb-1 text-slate-900">Stammtisch Eintrag</h3>
+            <p id="modalDateDisplay" class="text-slate-500 mb-6 text-sm font-medium"></p>
+            
+            <!-- Toggle: Übersprungen -->
+            <label class="flex items-center space-x-3 mb-6 p-3 bg-amber-50 rounded-lg border border-amber-100 cursor-pointer">
+                <input type="checkbox" id="skipCheckbox" onchange="toggleSkipMode()" class="w-5 h-5 text-amber-500 rounded border-amber-300 focus:ring-amber-500">
+                <span class="font-semibold text-amber-900">Stammtisch fiel aus / übersprungen</span>
+            </label>
+
+            <!-- Begründung (Sichtbar wenn übersprungen) -->
+            <div id="reasonSection" class="hidden mb-6">
+                <label class="block text-sm font-semibold text-slate-700 mb-2">Warum ist es ausgefallen?</label>
+                <textarea id="skipReason" rows="3" placeholder="Z.B. Alle waren krank..." class="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 resize-none"></textarea>
+            </div>
+
+            <!-- Standard Eingabe (Versteckt wenn übersprungen) -->
+            <div id="standardSection">
+                <div class="mb-6">
+                    <label class="block text-sm font-semibold text-slate-700 mb-3">Wer war da?</label>
+                    <div id="attendanceBoxes" class="space-y-2 bg-slate-50 p-3 rounded-lg border border-slate-100"></div>
+                </div>
+
+                <div class="mb-8">
+                    <label class="block text-sm font-semibold text-slate-700 mb-3">Wer hat bezahlt?</label>
+                    <select id="payerSelect" class="w-full bg-white border border-slate-300 rounded-lg px-4 py-3 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-medium">
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex justify-end space-x-3 pt-4 border-t border-slate-100">
+                <button onclick="closeModal()" class="px-5 py-2.5 rounded-lg text-slate-600 hover:bg-slate-100 font-medium transition-colors">Abbrechen</button>
+                <button onclick="saveEntry()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-lg font-semibold shadow-md hover:shadow-lg transition-all">Speichern</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- KONFIGURATION & DATEN ---
+        const persons = ["Manuel", "Niklas", "David", "Diyar"];
+        let stammtischData = JSON.parse(localStorage.getItem('stammtischData')) || {};
+        let highscores = JSON.parse(localStorage.getItem('catchTheDoenerScores')) || [];
+
+        // --- KALENDER LOGIK ---
+        let currentDate = new Date();
+        let selectedDateStr = "";
+
+        function renderCalendar() {
+            const grid = document.getElementById('calendarGrid');
+            const monthYear = document.getElementById('monthYear');
+            grid.innerHTML = '';
+            
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            
+            monthYear.innerText = new Date(year, month).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
+            
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            
+            let startOffset = firstDay === 0 ? 6 : firstDay - 1;
+
+            for (let i = 0; i < startOffset; i++) {
+                grid.innerHTML += `<div></div>`;
+            }
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const date = new Date(year, month, day);
+                const isWednesday = date.getDay() === 3;
+                
+                // Datum formatieren für Key (Lokale Zeitzone fix)
+                const d = String(date.getDate()).padStart(2, '0');
+                const m = String(date.getMonth() + 1).padStart(2, '0');
+                const y = date.getFullYear();
+                const dateStr = `${y}-${m}-${d}`;
+
+                const entry = stammtischData[dateStr];
+                
+                let classes = "w-10 h-10 mx-auto flex items-center justify-center rounded-full text-sm font-semibold transition-all ";
+                
+                if (isWednesday) {
+                    if (entry) {
+                        if (entry.skipped) {
+                            // Übersprungen
+                            classes += "bg-slate-200 text-slate-500 shadow-sm cursor-pointer hover:bg-slate-300 ring-2 ring-slate-300 ring-offset-2 opacity-60";
+                        } else {
+                            // Stattgefunden
+                            classes += "bg-indigo-600 text-white shadow-md cursor-pointer hover:bg-indigo-700 hover:scale-105 ring-2 ring-indigo-200 ring-offset-2";
+                        }
+                    } else {
+                        // Noch kein Eintrag
+                        classes += "bg-indigo-50 text-indigo-500 cursor-pointer hover:bg-indigo-100 border border-indigo-100 hover:scale-105";
+                    }
+                } else {
+                    classes += "text-slate-500 font-normal";
+                }
+
+                grid.innerHTML += `
+                    <div class="py-1">
+                        <div class="${classes}" ${isWednesday ? `onclick="openModal('${dateStr}')"` : ''}>
+                            ${day}
+                        </div>
+                    </div>
+                `;
+            }
+            updateSummary();
+            renderTable();
+        }
+
+        function changeMonth(offset) {
+            currentDate.setMonth(currentDate.getMonth() + offset);
+            renderCalendar();
+        }
+
+        // --- MODAL & EINGABE LOGIK ---
+        function openModal(dateStr) {
+            selectedDateStr = dateStr;
+            const entry = stammtischData[dateStr] || { skipped: false, reason: "", attended: [...persons], payer: persons[0] };
+            
+            // Datum schön formatieren
+            const parts = dateStr.split('-');
+            const displayDate = new Date(parts[0], parts[1]-1, parts[2]);
+            document.getElementById('modalDateDisplay').innerText = displayDate.toLocaleDateString('de-DE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            
+            // Checkbox "Übersprungen"
+            document.getElementById('skipCheckbox').checked = entry.skipped || false;
+            document.getElementById('skipReason').value = entry.reason || "";
+            
+            // Checkboxes generieren
+            const boxContainer = document.getElementById('attendanceBoxes');
+            boxContainer.innerHTML = '';
+            persons.forEach(person => {
+                const isChecked = (entry.attended && entry.attended.includes(person)) ? 'checked' : '';
+                boxContainer.innerHTML += `
+                    <label class="flex items-center space-x-3 p-2 rounded hover:bg-slate-200 cursor-pointer transition-colors">
+                        <input type="checkbox" value="${person}" class="attendance-check w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" ${isChecked}>
+                        <span class="text-slate-700 font-medium">${person}</span>
+                    </label>
+                `;
+            });
+
+            // Select generieren
+            const selectContainer = document.getElementById('payerSelect');
+            selectContainer.innerHTML = '';
+            persons.forEach(person => {
+                const isSelected = entry.payer === person ? 'selected' : '';
+                selectContainer.innerHTML += `<option value="${person}" ${isSelected}>${person}</option>`;
+            });
+
+            toggleSkipMode();
+            document.getElementById('entryModal').classList.remove('hidden');
+        }
+
+        function toggleSkipMode() {
+            const isSkipped = document.getElementById('skipCheckbox').checked;
+            if (isSkipped) {
+                document.getElementById('standardSection').classList.add('hidden');
+                document.getElementById('reasonSection').classList.remove('hidden');
+            } else {
+                document.getElementById('standardSection').classList.remove('hidden');
+                document.getElementById('reasonSection').classList.add('hidden');
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('entryModal').classList.add('hidden');
+        }
+
+        function saveEntry() {
+            const isSkipped = document.getElementById('skipCheckbox').checked;
+            
+            if (isSkipped) {
+                const reason = document.getElementById('skipReason').value.trim();
+                stammtischData[selectedDateStr] = { skipped: true, reason: reason, attended: [], payer: "" };
+            } else {
+                const checkboxes = document.querySelectorAll('.attendance-check:checked');
+                const attended = Array.from(checkboxes).map(cb => cb.value);
+                const payer = document.getElementById('payerSelect').value;
+                stammtischData[selectedDateStr] = { skipped: false, reason: "", attended, payer };
+            }
+
+            localStorage.setItem('stammtischData', JSON.stringify(stammtischData));
+            
+            closeModal();
+            renderCalendar();
+        }
+
+        function updateSummary() {
+            const summaryContainer = document.getElementById('summaryContainer');
+            summaryContainer.innerHTML = '';
+            
+            let stats = {};
+            persons.forEach(p => stats[p] = { attended: 0, paid: 0 });
+
+            Object.values(stammtischData).forEach(entry => {
+                if(!entry.skipped) {
+                    entry.attended.forEach(p => { if(stats[p]) stats[p].attended++; });
+                    if(stats[entry.payer]) stats[entry.payer].paid++;
+                }
+            });
+
+            persons.forEach(person => {
+                summaryContainer.innerHTML += `
+                    <div class="flex justify-between items-center bg-white p-3 rounded-xl shadow-sm border border-slate-100">
+                        <span class="font-bold text-slate-800">${person}</span>
+                        <div class="text-sm space-x-4 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
+                            <span class="text-slate-500">Da: <b class="text-slate-800">${stats[person].attended}x</b></span>
+                            <span class="text-slate-500">Bezahlt: <b class="text-indigo-600">${stats[person].paid}x</b></span>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // --- VERLAUFSTABELLE LOGIK ---
+        function renderTable() {
+            const tbody = document.getElementById('historyTableBody');
+            tbody.innerHTML = '';
+
+            const dates = Object.keys(stammtischData).sort((a, b) => new Date(b) - new Date(a)); // Neueste zuerst
+
+            if(dates.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-slate-400">Noch keine Einträge vorhanden.</td></tr>`;
+                return;
+            }
+
+            dates.forEach(dateStr => {
+                const entry = stammtischData[dateStr];
+                
+                // Datum Formatieren
+                const parts = dateStr.split('-');
+                const displayDate = new Date(parts[0], parts[1]-1, parts[2]).toLocaleDateString('de-DE', { year: 'numeric', month: '2-digit', day: '2-digit' });
+
+                if (entry.skipped) {
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-slate-50 transition-colors bg-slate-50/50 text-slate-500">
+                            <td class="px-4 py-3 font-medium">${displayDate}</td>
+                            <td class="px-4 py-3"><span class="bg-slate-200 text-slate-600 px-2 py-1 rounded-md text-xs font-bold uppercase tracking-wide">Ausgefallen</span></td>
+                            <td class="px-4 py-3">-</td>
+                            <td class="px-4 py-3">-</td>
+                            <td class="px-4 py-3 italic">${entry.reason || "Keine Begründung"}</td>
+                        </tr>
+                    `;
+                } else {
+                    const attendeesStr = entry.attended.length > 0 ? entry.attended.join(', ') : '<span class="text-red-400 italic">Niemand</span>';
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-slate-50 transition-colors">
+                            <td class="px-4 py-3 font-medium text-slate-900">${displayDate}</td>
+                            <td class="px-4 py-3"><span class="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-md text-xs font-bold uppercase tracking-wide">Stattgefunden</span></td>
+                            <td class="px-4 py-3">${attendeesStr}</td>
+                            <td class="px-4 py-3 font-semibold text-indigo-600">${entry.payer}</td>
+                            <td class="px-4 py-3 text-slate-400">-</td>
+                        </tr>
+                    `;
+                }
+            });
+        }
+
+        // --- JSON EXPORT ---
+        function exportJSON() {
+            const dataToSave = {
+                stammtisch: stammtischData,
+                catchTheDoenerHighscores: highscores
+            };
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dataToSave, null, 2));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "happy_wednesdays_backup.json");
+            document.body.appendChild(downloadAnchorNode); 
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        }
+
+        // --- CATCH THE DÖNER SPIEL ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        let gameLoop, gameActive = false;
+        
+        // Spieler Eigenschaften (Größe des Gesichts)
+        let player = { x: 175, y: 250, w: 50, h: 50, speed: 20 };
+        let items = [];
+        let score = 0;
+        let difficulty = 2;
+        let currentPlayerName = "";
+
+        // BILD FÜR DAS GESICHT LADEN
+        const faceImg = new Image();
+        // HIER KANNST DU DEIN BILD EINTRAGEN:
+        // z.B. faceImg.src = "mein-gesicht.png";
+        faceImg.src = "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix&backgroundColor=b6e3f4"; 
+
+        canvas.addEventListener('mousemove', (e) => {
+            if(!gameActive) return;
+            const rect = canvas.getBoundingClientRect();
+            // X-Koordinate skalieren (falls Canvas per CSS responsiv verkleinert wird)
+            const scaleX = canvas.width / rect.width;
+            player.x = (e.clientX - rect.left) * scaleX - (player.w / 2);
+            
+            if (player.x < 0) player.x = 0;
+            if (player.x + player.w > canvas.width) player.x = canvas.width - player.w;
+        });
+
+        // Touch Support
+        canvas.addEventListener('touchmove', (e) => {
+            if(!gameActive) return;
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            player.x = (e.touches[0].clientX - rect.left) * scaleX - (player.w / 2);
+            
+            if (player.x < 0) player.x = 0;
+            if (player.x + player.w > canvas.width) player.x = canvas.width - player.w;
+        }, { passive: false });
+
+        function startGame() {
+            const nameInput = document.getElementById('playerName').value.trim();
+            if (!nameInput) {
+                alert("Bitte Namen eintragen!");
+                return;
+            }
+            currentPlayerName = nameInput;
+            resetGameParams();
+            document.getElementById('gameOverScreen').classList.add('hidden');
+            gameActive = true;
+            loop();
+        }
+
+        function resetGameParams() {
+            items = [];
+            score = 0;
+            difficulty = 2;
+            player.x = 175;
+        }
+
+        function spawnItem() {
+            if (Math.random() < 0.05) { // Spawn Rate
+                items.push({ x: Math.random() * (canvas.width - 30), y: -30, w: 30, h: 30 });
+            }
+        }
+
+        function gameOver() {
+            gameActive = false;
+            document.getElementById('gameOverScreen').classList.remove('hidden');
+            document.getElementById('finalScore').innerText = score;
+            
+            highscores.push({ name: currentPlayerName, score: score, date: new Date().toLocaleDateString('de-DE') });
+            highscores.sort((a, b) => b.score - a.score);
+            highscores = highscores.slice(0, 5); // Top 5 behalten
+            localStorage.setItem('catchTheDoenerScores', JSON.stringify(highscores));
+            renderHighscores();
+        }
+
+        function resetGame() {
+            startGame();
+        }
+
+        function renderHighscores() {
+            const list = document.getElementById('highscoreList');
+            list.innerHTML = '';
+            if (highscores.length === 0) {
+                list.innerHTML = '<li class="text-sm text-slate-400 p-4 bg-slate-50 rounded-lg border border-slate-100 text-center">Noch keine Scores!</li>';
+            }
+            highscores.forEach((entry, i) => {
+                list.innerHTML += `
+                    <li class="flex justify-between items-center bg-white p-3 rounded-lg border border-slate-100 shadow-sm">
+                        <div class="flex items-center space-x-3">
+                            <span class="flex items-center justify-center w-6 h-6 rounded-full ${i === 0 ? 'bg-amber-400 text-white' : i === 1 ? 'bg-slate-300 text-white' : i === 2 ? 'bg-amber-700 text-white' : 'bg-slate-100 text-slate-500'} font-bold text-xs">${i+1}</span>
+                            <span class="font-semibold text-slate-700">${entry.name}</span>
+                        </div>
+                        <div class="text-right">
+                            <div class="font-black text-indigo-600 text-lg leading-none">${entry.score}</div>
+                            <div class="text-[10px] text-slate-400 mt-1">${entry.date || ''}</div>
+                        </div>
+                    </li>
+                `;
+            });
+        }
+
+        function loop() {
+            if (!gameActive) return;
+
+            // Clear Canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Player (Gesicht Bild)
+            // Wenn das Bild geladen ist, zeichne es. Sonst zeichne ein Rechteck als Fallback.
+            if (faceImg.complete) {
+                ctx.drawImage(faceImg, player.x, player.y, player.w, player.h);
+            } else {
+                ctx.fillStyle = '#4f46e5';
+                ctx.beginPath();
+                ctx.roundRect(player.x, player.y, player.w, player.h, 5);
+                ctx.fill();
+            }
+
+            // Spawn & Update Items (Döner)
+            spawnItem();
+            for (let i = 0; i < items.length; i++) {
+                let item = items[i];
+                item.y += difficulty;
+
+                // Draw Döner
+                ctx.font = "28px Arial";
+                ctx.fillText("🥙", item.x, item.y + 24);
+
+                // Collision Detection (Hitbox leicht angepasst für Emojis/Bild)
+                if (item.y + item.h - 10 >= player.y && item.y <= player.y + player.h &&
+                    item.x + item.w >= player.x && item.x <= player.x + player.w) {
+                    items.splice(i, 1);
+                    score += 10;
+                    if (score % 50 === 0) difficulty += 0.5; // Erhöht Geschwindigkeit
+                    i--;
+                } 
+                // Missed (Fällt aus dem Bild)
+                else if (item.y > canvas.height) {
+                    gameOver();
+                    return;
+                }
+            }
+
+            // Draw Score Info im Canvas
+            ctx.fillStyle = '#334155';
+            ctx.font = "900 20px Inter, sans-serif";
+            ctx.fillText("Score: " + score, 15, 30);
+
+            requestAnimationFrame(loop);
+        }
+
+        // Init App
+        renderCalendar();
+        renderHighscores();
+    </script>
+</body>
+</html>
