@@ -392,7 +392,8 @@
                 if (item.y > 250 && item.y < 300 && item.x > player.x && item.x < player.x + player.w) { items.splice(i, 1); score += 10; }
                 if (item.y > 300) gameOver();
             });
-            if (Math.random() < 0.05) items.push({ x: Math.random() * 370, y: -30 });
+
+            if (Math.random() < 0.02) items.push({ x: Math.random() * 370, y: -30 });
             requestAnimationFrame(loop);
         }
 
