@@ -162,213 +162,235 @@
         // --- KONFIGURATION & DATEN ---
         const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzvrm0q_u-faDzxZmTm-TSQFssW_e3CU_ti7nxILCryfWUjv-qD8pHKTuwF1cblATLc/exec'; // <--- WICHTIG!
         const persons = ["Manuel", "Niklas", "David", "Diyar"];
-let stammtischData = {};
-let highscores = [];
+        let stammtischData = {};
+        let highscores = [];
+        let currentPlayerName = "";
 
-// --- DATENBANK VERBINDUNG ---
-async function loadAllData() {
-    try {
-        const response = await fetch(GOOGLE_SCRIPT_URL);
-        const data = await response.json();
-        stammtischData = data.stammtisch || {};
-        highscores = data.highscores || [];
-        renderCalendar();
-        renderHighscores();
-    } catch (e) {
-        console.error("Fehler beim Laden:", e);
-    }
-}
-
-async function saveToSheet(key, value) {
-    try {
-        await fetch(GOOGLE_SCRIPT_URL, {
-            method: 'POST',
-            body: JSON.stringify({ key: key, value: value })
-        });
-    } catch (e) {
-        console.error("Fehler beim Speichern:", e);
-    }
-}
-
-// --- KALENDER LOGIK ---
-let currentDate = new Date();
-let selectedDateStr = "";
-
-function renderCalendar() {
-    const grid = document.getElementById('calendarGrid');
-    const monthYear = document.getElementById('monthYear');
-    grid.innerHTML = '';
-    
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    
-    monthYear.innerText = new Date(year, month).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
-    
-    const firstDay = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    
-    let startOffset = firstDay === 0 ? 6 : firstDay - 1;
-
-    for (let i = 0; i < startOffset; i++) grid.innerHTML += `<div></div>`;
-
-    for (let day = 1; day <= daysInMonth; day++) {
-        const date = new Date(year, month, day);
-        const isWednesday = date.getDay() === 3;
-        const d = String(date.getDate()).padStart(2, '0');
-        const m = String(date.getMonth() + 1).padStart(2, '0');
-        const y = date.getFullYear();
-        const dateStr = `${y}-${m}-${d}`;
-        const entry = stammtischData[dateStr];
-        
-        let classes = "w-10 h-10 mx-auto flex items-center justify-center rounded-full text-sm font-semibold transition-all ";
-        if (isWednesday) {
-            if (entry) {
-                classes += entry.skipped ? "bg-slate-200 text-slate-500 opacity-60" : "bg-indigo-600 text-white shadow-md hover:bg-indigo-700";
-            } else {
-                classes += "bg-indigo-50 text-indigo-500 hover:bg-indigo-100 border border-indigo-100";
+        // --- DATENBANK VERBINDUNG ---
+        async function loadAllData() {
+            try {
+                const response = await fetch(GOOGLE_SCRIPT_URL);
+                const data = await response.json();
+                stammtischData = data.stammtisch || {};
+                highscores = data.highscores || [];
+                renderCalendar();
+                renderHighscores();
+            } catch (e) {
+                console.error("Fehler beim Laden:", e);
             }
-        } else {
-            classes += "text-slate-500 font-normal";
         }
-        grid.innerHTML += `<div class="py-1"><div class="${classes} cursor-pointer" ${isWednesday ? `onclick="openModal('${dateStr}')"` : ''}>${day}</div></div>`;
-    }
-    updateSummary();
-    renderTable();
-}
-
-function changeMonth(offset) {
-    currentDate.setMonth(currentDate.getMonth() + offset);
-    renderCalendar();
-}
-
-// --- MODAL & EINGABE LOGIK ---
-function openModal(dateStr) {
-    selectedDateStr = dateStr;
-    const entry = stammtischData[dateStr] || { skipped: false, reason: "", attended: [...persons], payer: persons[0] };
-    const parts = dateStr.split('-');
-    const displayDate = new Date(parts[0], parts[1]-1, parts[2]);
-    document.getElementById('modalDateDisplay').innerText = displayDate.toLocaleDateString('de-DE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-    
-    document.getElementById('skipCheckbox').checked = entry.skipped || false;
-    document.getElementById('skipReason').value = entry.reason || "";
-    
-    const boxContainer = document.getElementById('attendanceBoxes');
-    boxContainer.innerHTML = '';
-    persons.forEach(person => {
-        const isChecked = (entry.attended && entry.attended.includes(person)) ? 'checked' : '';
-        boxContainer.innerHTML += `<label class="flex items-center space-x-3 p-2 rounded hover:bg-slate-200 cursor-pointer"><input type="checkbox" value="${person}" class="attendance-check w-4 h-4 text-indigo-600 rounded border-slate-300" ${isChecked}><span class="text-slate-700 font-medium">${person}</span></label>`;
-    });
-
-    const selectContainer = document.getElementById('payerSelect');
-    selectContainer.innerHTML = '';
-    persons.forEach(person => {
-        selectContainer.innerHTML += `<option value="${person}" ${entry.payer === person ? 'selected' : ''}>${person}</option>`;
-    });
-
-    toggleSkipMode();
-    document.getElementById('entryModal').classList.remove('hidden');
-}
-
-function toggleSkipMode() {
-    const isSkipped = document.getElementById('skipCheckbox').checked;
-    document.getElementById('standardSection').classList.toggle('hidden', isSkipped);
-    document.getElementById('reasonSection').classList.toggle('hidden', !isSkipped);
-}
-
-function closeModal() { document.getElementById('entryModal').classList.add('hidden'); }
-
-async function saveEntry() {
-    const isSkipped = document.getElementById('skipCheckbox').checked;
-    if (isSkipped) {
-        stammtischData[selectedDateStr] = { skipped: true, reason: document.getElementById('skipReason').value.trim(), attended: [], payer: "" };
-    } else {
-        const attended = Array.from(document.querySelectorAll('.attendance-check:checked')).map(cb => cb.value);
-        stammtischData[selectedDateStr] = { skipped: false, reason: "", attended, payer: document.getElementById('payerSelect').value };
-    }
-    await saveToSheet('stammtisch', stammtischData);
-    closeModal();
-    renderCalendar();
-}
-
-function updateSummary() {
-    const summaryContainer = document.getElementById('summaryContainer');
-    summaryContainer.innerHTML = '';
-    let stats = {};
-    persons.forEach(p => stats[p] = { attended: 0, paid: 0 });
-    Object.values(stammtischData).forEach(entry => {
-        if(!entry.skipped) {
-            entry.attended.forEach(p => { if(stats[p]) stats[p].attended++; });
-            if(stats[entry.payer]) stats[entry.payer].paid++;
+        
+        async function saveToSheet(key, value) {
+            try {
+                await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ key: key, value: value })
+                });
+            } catch (e) {
+                console.error("Fehler beim Speichern:", e);
+            }
         }
-    });
-    persons.forEach(person => {
-        summaryContainer.innerHTML += `<div class="flex justify-between items-center bg-white p-3 rounded-xl border border-slate-100"><span class="font-bold text-slate-800">${person}</span><div class="text-sm space-x-4 bg-slate-50 px-3 py-1.5 rounded-lg"><span class="text-slate-500">Da: <b>${stats[person].attended}x</b></span><span class="text-slate-500">Bezahlt: <b class="text-indigo-600">${stats[person].paid}x</b></span></div></div>`;
-    });
-}
+        
+        // --- KALENDER LOGIK ---
+        let currentDate = new Date();
+        let selectedDateStr = "";
+        
+        function renderCalendar() {
+            const grid = document.getElementById('calendarGrid');
+            const monthYear = document.getElementById('monthYear');
+            grid.innerHTML = '';
+            
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            
+            monthYear.innerText = new Date(year, month).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
+            
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            
+            let startOffset = firstDay === 0 ? 6 : firstDay - 1;
+        
+            for (let i = 0; i < startOffset; i++) grid.innerHTML += `<div></div>`;
+        
+            for (let day = 1; day <= daysInMonth; day++) {
+                const date = new Date(year, month, day);
+                const isWednesday = date.getDay() === 3;
+                const d = String(date.getDate()).padStart(2, '0');
+                const m = String(date.getMonth() + 1).padStart(2, '0');
+                const y = date.getFullYear();
+                const dateStr = `${y}-${m}-${d}`;
+                const entry = stammtischData[dateStr];
+                
+                let classes = "w-10 h-10 mx-auto flex items-center justify-center rounded-full text-sm font-semibold transition-all ";
+                if (isWednesday) {
+                    if (entry) {
+                        classes += entry.skipped ? "bg-slate-200 text-slate-500 opacity-60" : "bg-indigo-600 text-white shadow-md hover:bg-indigo-700";
+                    } else {
+                        classes += "bg-indigo-50 text-indigo-500 hover:bg-indigo-100 border border-indigo-100";
+                    }
+                } else {
+                    classes += "text-slate-500 font-normal";
+                }
+                grid.innerHTML += `<div class="py-1"><div class="${classes} cursor-pointer" ${isWednesday ? `onclick="openModal('${dateStr}')"` : ''}>${day}</div></div>`;
+            }
+            updateSummary();
+            renderTable();
+        }
+        
+        function changeMonth(offset) {
+            currentDate.setMonth(currentDate.getMonth() + offset);
+            renderCalendar();
+        }
+        
+        // --- MODAL & EINGABE LOGIK ---
+        function openModal(dateStr) {
+            selectedDateStr = dateStr;
+            const entry = stammtischData[dateStr] || { skipped: false, reason: "", attended: [...persons], payer: persons[0] };
+            const parts = dateStr.split('-');
+            const displayDate = new Date(parts[0], parts[1]-1, parts[2]);
+            document.getElementById('modalDateDisplay').innerText = displayDate.toLocaleDateString('de-DE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            
+            document.getElementById('skipCheckbox').checked = entry.skipped || false;
+            document.getElementById('skipReason').value = entry.reason || "";
+            
+            const boxContainer = document.getElementById('attendanceBoxes');
+            boxContainer.innerHTML = '';
+            persons.forEach(person => {
+                const isChecked = (entry.attended && entry.attended.includes(person)) ? 'checked' : '';
+                boxContainer.innerHTML += `<label class="flex items-center space-x-3 p-2 rounded hover:bg-slate-200 cursor-pointer"><input type="checkbox" value="${person}" class="attendance-check w-4 h-4 text-indigo-600 rounded border-slate-300" ${isChecked}><span class="text-slate-700 font-medium">${person}</span></label>`;
+            });
+        
+            const selectContainer = document.getElementById('payerSelect');
+            selectContainer.innerHTML = '';
+            persons.forEach(person => {
+                selectContainer.innerHTML += `<option value="${person}" ${entry.payer === person ? 'selected' : ''}>${person}</option>`;
+            });
+        
+            toggleSkipMode();
+            document.getElementById('entryModal').classList.remove('hidden');
+        }
+        
+        function toggleSkipMode() {
+            const isSkipped = document.getElementById('skipCheckbox').checked;
+            document.getElementById('standardSection').classList.toggle('hidden', isSkipped);
+            document.getElementById('reasonSection').classList.toggle('hidden', !isSkipped);
+        }
+        
+        function closeModal() { document.getElementById('entryModal').classList.add('hidden'); }
+        
+        async function saveEntry() {
+            const isSkipped = document.getElementById('skipCheckbox').checked;
+            if (isSkipped) {
+                stammtischData[selectedDateStr] = { skipped: true, reason: document.getElementById('skipReason').value.trim(), attended: [], payer: "" };
+            } else {
+                const attended = Array.from(document.querySelectorAll('.attendance-check:checked')).map(cb => cb.value);
+                stammtischData[selectedDateStr] = { skipped: false, reason: "", attended, payer: document.getElementById('payerSelect').value };
+            }
+            await saveToSheet('stammtisch', stammtischData);
+            closeModal();
+            renderCalendar();
+        }
+        
+        function updateSummary() {
+            const summaryContainer = document.getElementById('summaryContainer');
+            summaryContainer.innerHTML = '';
+            let stats = {};
+            persons.forEach(p => stats[p] = { attended: 0, paid: 0 });
+            Object.values(stammtischData).forEach(entry => {
+                if(!entry.skipped) {
+                    entry.attended.forEach(p => { if(stats[p]) stats[p].attended++; });
+                    if(stats[entry.payer]) stats[entry.payer].paid++;
+                }
+            });
+            persons.forEach(person => {
+                summaryContainer.innerHTML += `<div class="flex justify-between items-center bg-white p-3 rounded-xl border border-slate-100"><span class="font-bold text-slate-800">${person}</span><div class="text-sm space-x-4 bg-slate-50 px-3 py-1.5 rounded-lg"><span class="text-slate-500">Da: <b>${stats[person].attended}x</b></span><span class="text-slate-500">Bezahlt: <b class="text-indigo-600">${stats[person].paid}x</b></span></div></div>`;
+            });
+        }
+        
+        function renderTable() {
+            const tbody = document.getElementById('historyTableBody');
+            tbody.innerHTML = '';
+            const dates = Object.keys(stammtischData).sort((a, b) => new Date(b) - new Date(a));
+            dates.forEach(dateStr => {
+                const entry = stammtischData[dateStr];
+                const parts = dateStr.split('-');
+                const displayDate = new Date(parts[0], parts[1]-1, parts[2]).toLocaleDateString('de-DE', { year: 'numeric', month: '2-digit', day: '2-digit' });
+                tbody.innerHTML += `<tr><td class="px-4 py-3 font-medium">${displayDate}</td><td class="px-4 py-3"><span class="${entry.skipped ? 'bg-slate-200' : 'bg-emerald-100'} px-2 py-1 rounded text-xs font-bold uppercase">${entry.skipped ? 'Ausgefallen' : 'Stattgefunden'}</span></td><td class="px-4 py-3">${entry.skipped ? '-' : entry.attended.join(', ')}</td><td class="px-4 py-3">${entry.skipped ? '-' : entry.payer}</td><td class="px-4 py-3 italic">${entry.reason || '-'}</td></tr>`;
+            });
+        }
+        
+        function exportJSON() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({stammtisch: stammtischData, highscores: highscores}, null, 2));
+            const a = document.createElement('a'); a.href = dataStr; a.download = "backup.json"; a.click();
+        }
+        
+        // --- SPIEL LOGIK ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        let gameActive = false;
+        let player = { x: 175, y: 250, w: 50, h: 50 };
+        let items = [];
+        let score = 0;
+        const faceImg = new Image();
+        faceImg.src = "IMG-20260219-WA0012.png";
+        
+        canvas.addEventListener('mousemove', (e) => {
+            if(!gameActive) return;
+            const rect = canvas.getBoundingClientRect();
+            player.x = (e.clientX - rect.left) * (canvas.width / rect.width) - (player.w / 2);
+        });
 
-function renderTable() {
-    const tbody = document.getElementById('historyTableBody');
-    tbody.innerHTML = '';
-    const dates = Object.keys(stammtischData).sort((a, b) => new Date(b) - new Date(a));
-    dates.forEach(dateStr => {
-        const entry = stammtischData[dateStr];
-        const parts = dateStr.split('-');
-        const displayDate = new Date(parts[0], parts[1]-1, parts[2]).toLocaleDateString('de-DE', { year: 'numeric', month: '2-digit', day: '2-digit' });
-        tbody.innerHTML += `<tr><td class="px-4 py-3 font-medium">${displayDate}</td><td class="px-4 py-3"><span class="${entry.skipped ? 'bg-slate-200' : 'bg-emerald-100'} px-2 py-1 rounded text-xs font-bold uppercase">${entry.skipped ? 'Ausgefallen' : 'Stattgefunden'}</span></td><td class="px-4 py-3">${entry.skipped ? '-' : entry.attended.join(', ')}</td><td class="px-4 py-3">${entry.skipped ? '-' : entry.payer}</td><td class="px-4 py-3 italic">${entry.reason || '-'}</td></tr>`;
-    });
-}
+        function resetGameParams() {
+            items = [];
+            score = 0;
+            player.x = 175;
+        }
+        
+        function startGame() {
+            const nameInput = document.getElementById('playerName').value.trim();
+            if (!nameInput) { alert("Bitte Namen eintragen!"); return; }
+            currentPlayerName = nameInput;
+            resetGameParams();
+            document.getElementById('gameOverScreen').classList.add('hidden');
+            gameActive = true;
+            loop();
+        }
+        
+        function resetGame() { startGame(); }
+        
 
-function exportJSON() {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({stammtisch: stammtischData, highscores: highscores}, null, 2));
-    const a = document.createElement('a'); a.href = dataStr; a.download = "backup.json"; a.click();
-}
+        
+        async function gameOver() {
+            gameActive = false;
+            document.getElementById('gameOverScreen').classList.remove('hidden');
+            document.getElementById('finalScore').innerText = score;
+            highscores.push({ name: currentPlayerName, score: score, date: new Date().toLocaleDateString('de-DE') });
+            highscores.sort((a, b) => b.score - a.score);
+            highscores = highscores.slice(0, 5);
+            await saveToSheet('highscores', highscores);
+            renderHighscores();
+        }
 
-// --- SPIEL LOGIK ---
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-let gameActive = false;
-let player = { x: 175, y: 250, w: 50, h: 50 };
-let items = [];
-let score = 0;
-const faceImg = new Image();
-faceImg.src = "IMG-20260219-WA0012.png";
-
-canvas.addEventListener('mousemove', (e) => {
-    if(!gameActive) return;
-    const rect = canvas.getBoundingClientRect();
-    player.x = (e.clientX - rect.left) * (canvas.width / rect.width) - (player.w / 2);
-});
-
-async function gameOver() {
-    gameActive = false;
-    document.getElementById('gameOverScreen').classList.remove('hidden');
-    document.getElementById('finalScore').innerText = score;
-    highscores.push({ name: document.getElementById('playerName').value, score: score, date: new Date().toLocaleDateString('de-DE') });
-    highscores.sort((a, b) => b.score - a.score);
-    highscores = highscores.slice(0, 5);
-    await saveToSheet('highscores', highscores);
-    renderHighscores();
-}
-
-function renderHighscores() {
-    const list = document.getElementById('highscoreList');
-    list.innerHTML = '';
-    highscores.forEach((entry, i) => list.innerHTML += `<li class="flex justify-between p-3 bg-white border border-slate-100 rounded-lg"><span>${i+1}. ${entry.name}</span><span class="font-bold text-indigo-600">${entry.score}</span></li>`);
-}
-
-function loop() {
-    if (!gameActive) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if (faceImg.complete) ctx.drawImage(faceImg, player.x, player.y, player.w, player.h);
-    items.forEach((item, i) => {
-        item.y += 2;
-        ctx.fillText("🥙", item.x, item.y + 24);
-        if (item.y > 250 && item.y < 300 && item.x > player.x && item.x < player.x + player.w) { items.splice(i, 1); score += 10; }
-        if (item.y > 300) gameOver();
-    });
-    if (Math.random() < 0.05) items.push({ x: Math.random() * 370, y: -30 });
-    requestAnimationFrame(loop);
-}
+        
+        function renderHighscores() {
+            const list = document.getElementById('highscoreList');
+            list.innerHTML = '';
+            highscores.forEach((entry, i) => list.innerHTML += `<li class="flex justify-between p-3 bg-white border border-slate-100 rounded-lg"><span>${i+1}. ${entry.name}</span><span class="font-bold text-indigo-600">${entry.score}</span></li>`);
+        }
+        
+        function loop() {
+            if (!gameActive) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (faceImg.complete) ctx.drawImage(faceImg, player.x, player.y, player.w, player.h);
+            items.forEach((item, i) => {
+                item.y += 2;
+                ctx.fillText("🥙", item.x, item.y + 24);
+                if (item.y > 250 && item.y < 300 && item.x > player.x && item.x < player.x + player.w) { items.splice(i, 1); score += 10; }
+                if (item.y > 300) gameOver();
+            });
+            if (Math.random() < 0.05) items.push({ x: Math.random() * 370, y: -30 });
+            requestAnimationFrame(loop);
+        }
 
         // Init App
         loadAllData();
