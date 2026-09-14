@@ -28,15 +28,8 @@
     <!-- Hauptinhalt (anfangs unsichtbar) -->
     <div id="mainContent" class="opacity-0 p-4 md:p-8 max-w-7xl mx-auto space-y-10">
         
-        <!-- Header mit Link zum Ticket-System -->
-        <header class="py-8 flex justify-between items-center relative">
-            <div class="w-24"></div> <!-- Platzhalter für Zentrierung -->
-            <h1 class="text-3xl font-bold text-slate-800 text-center">Happy Wednesday</h1>
-            <div class="w-24 text-right">
-                <a href="tickets.html" class="inline-block bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-4 py-2 rounded-lg font-medium transition-colors text-sm whitespace-nowrap">
-                    🎟️ Ticket System
-                </a>
-            </div>
+        <header class="text-center py-8">
+            <h1 class="text-3xl font-bold text-slate-800">Happy Wednesday</h1>
         </header>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
@@ -122,18 +115,72 @@
             </div>
         </div>
 
+        <!-- TICKET SYSTEM -->
+        <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-100">
+            <div class="flex justify-between items-center mb-8 border-b border-slate-100 pb-4">
+                <h2 class="text-2xl font-semibold text-slate-800">Aufgaben & Tickets</h2>
+                <button onclick="openTicketModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-lg font-semibold shadow-sm transition-colors">
+                    + Ticket erstellen
+                </button>
+            </div>
+
+            <!-- Ticket Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 flex items-center justify-between">
+                    <div>
+                        <p class="text-slate-500 text-sm font-medium">Gesamt</p>
+                        <h3 class="text-2xl font-bold text-slate-800" id="stat-total">0</h3>
+                    </div>
+                    <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center text-lg shadow-sm">📋</div>
+                </div>
+                <div class="bg-amber-50 p-4 rounded-xl border border-amber-100 flex items-center justify-between">
+                    <div>
+                        <p class="text-amber-700 text-sm font-medium">Offen</p>
+                        <h3 class="text-2xl font-bold text-amber-600" id="stat-open">0</h3>
+                    </div>
+                    <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center text-lg shadow-sm">⏳</div>
+                </div>
+                <div class="bg-emerald-50 p-4 rounded-xl border border-emerald-100 flex items-center justify-between">
+                    <div>
+                        <p class="text-emerald-700 text-sm font-medium">Erledigt</p>
+                        <h3 class="text-2xl font-bold text-emerald-600" id="stat-done">0</h3>
+                    </div>
+                    <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center text-lg shadow-sm">✅</div>
+                </div>
+            </div>
+
+            <!-- Ticket Tabelle -->
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-left text-sm whitespace-nowrap">
+                    <thead class="bg-slate-50 text-slate-500 uppercase tracking-wider font-medium border-b border-slate-200">
+                        <tr>
+                            <th class="px-4 py-3">ID</th>
+                            <th class="px-4 py-3">Titel & Typ</th>
+                            <th class="px-4 py-3">Status</th>
+                            <th class="px-4 py-3">Prio</th>
+                            <th class="px-4 py-3">Fortschritt</th>
+                            <th class="px-4 py-3">Zugewiesen an</th>
+                            <th class="px-4 py-3">Tage offen</th>
+                            <th class="px-4 py-3 text-right">Aktionen</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ticketTableBody" class="divide-y divide-slate-100">
+                        <!-- Wird per JS gefüllt -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
     </div>
 
     <!-- Modal für Mittwochseingabe -->
     <div id="entryModal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <!-- Dein bestehendes Modal für den Stammtisch -->
         <div class="bg-white p-6 md:p-8 rounded-2xl shadow-2xl max-w-md w-full relative">
-            <button onclick="closeModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-700 p-2">
-                ✕
-            </button>
+            <button onclick="closeModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-700 p-2">✕</button>
             <h3 class="text-xl font-bold mb-1 text-slate-900">Stammtisch Eintrag</h3>
             <p id="modalDateDisplay" class="text-slate-500 mb-6 text-sm font-medium"></p>
             
-            <!-- Toggle: Übersprungen -->
             <label class="flex items-center space-x-3 mb-6 p-3 bg-amber-50 rounded-lg border border-amber-100 cursor-pointer">
                 <input type="checkbox" id="skipCheckbox" onchange="toggleSkipMode()" class="w-5 h-5 text-amber-500 rounded border-amber-300 focus:ring-amber-500">
                 <span class="font-semibold text-amber-900">Stammtisch fiel aus / übersprungen</span>
@@ -149,11 +196,9 @@
                     <label class="block text-sm font-semibold text-slate-700 mb-3">Wer war da?</label>
                     <div id="attendanceBoxes" class="space-y-2 bg-slate-50 p-3 rounded-lg border border-slate-100"></div>
                 </div>
-
                 <div class="mb-8">
                     <label class="block text-sm font-semibold text-slate-700 mb-3">Wer hat bezahlt?</label>
-                    <select id="payerSelect" class="w-full bg-white border border-slate-300 rounded-lg px-4 py-3 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-medium">
-                    </select>
+                    <select id="payerSelect" class="w-full bg-white border border-slate-300 rounded-lg px-4 py-3 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-medium"></select>
                 </div>
             </div>
 
@@ -164,18 +209,87 @@
         </div>
     </div>
 
+    <!-- Modal für Ticket-Eingabe -->
+    <div id="ticketModal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div class="bg-white p-6 md:p-8 rounded-2xl shadow-2xl max-w-lg w-full relative max-h-[90vh] overflow-y-auto">
+            <button onclick="closeTicketModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-700 p-2">✕</button>
+            <h3 class="text-xl font-bold mb-6 text-slate-900" id="modalTicketTitle">Neues Ticket</h3>
+            
+            <form id="ticketForm" class="space-y-4" onsubmit="saveTicket(event)">
+                <input type="hidden" id="ticketId">
+                
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1">Titel</label>
+                    <input type="text" id="tTitle" required class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1">Typ</label>
+                        <select id="tType" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
+                            <option value="Feature">Feature</option>
+                            <option value="Bug">Bug / Fehler</option>
+                            <option value="Orga">Organisation</option>
+                            <option value="Einkauf">Einkauf</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1">Priorität</label>
+                        <select id="tPrio" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
+                            <option value="Niedrig">Niedrig</option>
+                            <option value="Mittel" selected>Mittel</option>
+                            <option value="Hoch">Hoch</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1">Zugewiesen an</label>
+                        <select id="tAssignee" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
+                            <option value="Jeder">Jeder / Offen</option>
+                            <option value="Manuel">Manuel</option>
+                            <option value="Niklas">Niklas</option>
+                            <option value="David">David</option>
+                            <option value="Diyar">Diyar</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1">Fortschritt (%)</label>
+                        <input type="number" id="tProgress" min="0" max="100" value="0" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1">Deadline (optional)</label>
+                    <input type="date" id="tDeadline" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1">Beschreibung</label>
+                    <textarea id="tDesc" rows="3" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-none"></textarea>
+                </div>
+
+                <div class="flex justify-end space-x-3 pt-4 border-t border-slate-100">
+                    <button type="button" onclick="closeTicketModal()" class="px-5 py-2.5 rounded-lg text-slate-600 hover:bg-slate-100 font-medium transition-colors">Abbrechen</button>
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-lg font-semibold shadow-md transition-all">Speichern</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
         // --- KONFIGURATION & DATEN ---
-        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzvrm0q_u-faDzxZmTm-TSQFssW_e3CU_ti7nxILCryfWUjv-qD8pHKTuwF1cblATLc/exec'; // <--- WICHTIG!
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzvrm0q_u-faDzxZmTm-TSQFssW_e3CU_ti7nxILCryfWUjv-qD8pHKTuwF1cblATLc/exec';
         const persons = ["Manuel", "Niklas", "David", "Diyar"];
         let stammtischData = {};
         let highscores = [];
+        let tickets = []; // Globale Variable für Tickets
         let currentPlayerName = "";
 
         // --- DATENBANK VERBINDUNG ---
         async function initApp() {
             const startTime = Date.now();
-            
             const dataLoad = loadAllData();
             const elapsed = Date.now() - startTime;
             if (elapsed < 3000) {
@@ -190,16 +304,10 @@
                 document.getElementById('mainContent').style.opacity = '1';
             }, 500);
         }
-        initApp();
 
-
-        // Variable um das Chart zu speichern, damit wir es aktualisieren können
         let myChart;
-        
         function renderChart() {
             const ctx = document.getElementById('statsChart').getContext('2d');
-            
-            // Daten vorbereiten
             let attendanceCounts = persons.map(p => {
                 let count = 0;
                 Object.values(stammtischData).forEach(entry => {
@@ -208,10 +316,7 @@
                 return count;
             });
         
-            // Falls schon ein Chart existiert, löschen (um Grafikfehler zu vermeiden)
             if (myChart) myChart.destroy();
-        
-            // Chart erstellen
             myChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
@@ -219,7 +324,7 @@
                     datasets: [{
                         label: 'Anwesenheit (x)',
                         data: attendanceCounts,
-                        backgroundColor: '#4f46e5', // Dein Indigo-Farbton
+                        backgroundColor: '#4f46e5',
                         borderRadius: 8
                     }]
                 },
@@ -241,9 +346,12 @@
                 const data = await response.json();
                 stammtischData = data.stammtisch || {};
                 highscores = data.highscores || [];
+                tickets = data.tickets || []; // Tickets aus Google Apps Script laden
+                
                 renderCalendar();
                 renderHighscores();
                 renderChart();
+                renderTickets(); // Tickets rendern
             } catch (e) {
                 console.error("Fehler beim Laden:", e);
             }
@@ -271,12 +379,10 @@
             
             const year = currentDate.getFullYear();
             const month = currentDate.getMonth();
-            
             monthYear.innerText = new Date(year, month).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
             
             const firstDay = new Date(year, month, 1).getDay();
             const daysInMonth = new Date(year, month + 1, 0).getDate();
-            
             let startOffset = firstDay === 0 ? 6 : firstDay - 1;
         
             for (let i = 0; i < startOffset; i++) grid.innerHTML += `<div></div>`;
@@ -311,7 +417,7 @@
             renderCalendar();
         }
         
-        // --- MODAL & EINGABE LOGIK ---
+        // --- STAMMTISCH MODAL ---
         function openModal(dateStr) {
             selectedDateStr = dateStr;
             const entry = stammtischData[dateStr] || { skipped: false, reason: "", attended: [...persons], payer: persons[0] };
@@ -388,11 +494,6 @@
             });
         }
         
-        function exportJSON() {
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({stammtisch: stammtischData, highscores: highscores}, null, 2));
-            const a = document.createElement('a'); a.href = dataStr; a.download = "backup.json"; a.click();
-        }
-        
         // --- SPIEL LOGIK ---
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
@@ -403,14 +504,13 @@
         const faceImg = new Image();
         faceImg.src = "IMG-20260219-WA0012.png";
         
-
         canvas.addEventListener('touchmove', (e) => {
             if(!gameActive) return;
-            e.preventDefault(); // <-- DIESE ZEILE MUSS DA STEHEN
+            e.preventDefault(); 
             const rect = canvas.getBoundingClientRect();
             const touch = e.touches[0];
             player.x = (touch.clientX - rect.left) * (canvas.width / rect.width) - (player.w / 2);
-        }, { passive: false }); // <-- WICHTIG: { passive: false }
+        }, { passive: false });
 
         function resetGameParams() {
             items = [];
@@ -430,8 +530,6 @@
         
         function resetGame() { startGame(); }
         
-
-        
         async function gameOver() {
             gameActive = false;
             document.getElementById('gameOverScreen').classList.remove('hidden');
@@ -443,7 +541,6 @@
             renderHighscores();
         }
 
-        
         function renderHighscores() {
             const list = document.getElementById('highscoreList');
             list.innerHTML = '';
@@ -451,37 +548,192 @@
         }
         
         function loop() {
-    if (!gameActive) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Spieler: Zeichne Bild oder blaues Quadrat als Fallback
-    if (faceImg.complete && faceImg.naturalWidth !== 0) {
-        ctx.drawImage(faceImg, player.x, player.y, player.w, player.h);
-    } else {
-        ctx.fillStyle = '#4f46e5';
-        ctx.fillRect(player.x, player.y, player.w, player.h);
-    }
+            if (!gameActive) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            if (faceImg.complete && faceImg.naturalWidth !== 0) {
+                ctx.drawImage(faceImg, player.x, player.y, player.w, player.h);
+            } else {
+                ctx.fillStyle = '#4f46e5';
+                ctx.fillRect(player.x, player.y, player.w, player.h);
+            }
 
-    items.forEach((item, i) => {
-        item.y += 2;
-        // Döner größer machen:
-        ctx.font = "50px Arial"; 
-        ctx.fillText("🥙", item.x, item.y + 40);
-        
-        // Kollisions-Logik (dynamisch zum Spieler):
-        if (item.y > player.y - 40 && item.y < player.y + player.h && 
-            item.x > player.x - 30 && item.x < player.x + player.w) { 
-            items.splice(i, 1); 
-            score += 10; 
+            items.forEach((item, i) => {
+                item.y += 2;
+                ctx.font = "50px Arial"; 
+                ctx.fillText("🥙", item.x, item.y + 40);
+                
+                if (item.y > player.y - 40 && item.y < player.y + player.h && 
+                    item.x > player.x - 30 && item.x < player.x + player.w) { 
+                    items.splice(i, 1); 
+                    score += 10; 
+                }
+                if (item.y > 300) gameOver();
+            });
+
+            if (Math.random() < 0.02) items.push({ x: Math.random() * 370, y: -30 });
+            requestAnimationFrame(loop);
         }
-        if (item.y > 300) gameOver();
-    });
 
-    if (Math.random() < 0.02) items.push({ x: Math.random() * 370, y: -30 });
-    requestAnimationFrame(loop);
-}
+        // --- TICKET SYSTEM LOGIK ---
+        function generateTicketId() {
+            return 'TKT-' + Math.floor(Math.random() * 9000 + 1000);
+        }
+
+        function openTicketModal(id = null) {
+            document.getElementById('ticketModal').classList.remove('hidden');
+            const form = document.getElementById('ticketForm');
+            form.reset();
+
+            if (id) {
+                const ticket = tickets.find(t => t.id === id);
+                document.getElementById('modalTicketTitle').innerText = 'Ticket bearbeiten';
+                document.getElementById('ticketId').value = ticket.id;
+                document.getElementById('tTitle').value = ticket.title;
+                document.getElementById('tType').value = ticket.type;
+                document.getElementById('tPrio').value = ticket.prio;
+                document.getElementById('tAssignee').value = ticket.assignee;
+                document.getElementById('tProgress').value = ticket.progress || 0;
+                document.getElementById('tDeadline').value = ticket.deadline || '';
+                document.getElementById('tDesc').value = ticket.desc;
+            } else {
+                document.getElementById('modalTicketTitle').innerText = 'Neues Ticket erstellen';
+                document.getElementById('ticketId').value = '';
+                document.getElementById('tProgress').value = 0;
+            }
+        }
+
+        function closeTicketModal() {
+            document.getElementById('ticketModal').classList.add('hidden');
+        }
+
+        async function saveTicket(e) {
+            e.preventDefault();
+            const id = document.getElementById('ticketId').value;
+            
+            const ticketData = {
+                title: document.getElementById('tTitle').value,
+                type: document.getElementById('tType').value,
+                prio: document.getElementById('tPrio').value,
+                assignee: document.getElementById('tAssignee').value,
+                progress: parseInt(document.getElementById('tProgress').value) || 0,
+                deadline: document.getElementById('tDeadline').value,
+                desc: document.getElementById('tDesc').value
+            };
+
+            // Status automatisch auf Erledigt setzen, wenn Progress 100% ist (optional, aber hilfreich)
+            if (ticketData.progress === 100) {
+                ticketData.status = 'Erledigt';
+            }
+
+            if (id) {
+                // Bearbeiten
+                const index = tickets.findIndex(t => t.id === id);
+                ticketData.status = tickets[index].status; // Status beibehalten, es sei denn er war 100%
+                if (ticketData.progress === 100) ticketData.status = 'Erledigt';
+                else if (ticketData.progress < 100 && ticketData.status === 'Erledigt') ticketData.status = 'Offen';
+                tickets[index] = { ...tickets[index], ...ticketData };
+            } else {
+                // Neu erstellen
+                ticketData.id = generateTicketId();
+                ticketData.status = ticketData.progress === 100 ? 'Erledigt' : 'Offen';
+                ticketData.createdAt = new Date().toISOString();
+                tickets.push(ticketData);
+            }
+
+            renderTickets(); // Sofort aktualisieren (Optimistic UI)
+            closeTicketModal();
+            
+            // In Google Sheet speichern
+            await saveToSheet('tickets', tickets);
+        }
+
+        async function deleteTicket(id) {
+            if(confirm('Ticket wirklich löschen?')) {
+                tickets = tickets.filter(t => t.id !== id);
+                renderTickets();
+                await saveToSheet('tickets', tickets);
+            }
+        }
+
+        async function toggleStatus(id) {
+            const ticket = tickets.find(t => t.id === id);
+            ticket.status = ticket.status === 'Offen' ? 'Erledigt' : 'Offen';
+            if(ticket.status === 'Erledigt') ticket.progress = 100;
+            renderTickets();
+            await saveToSheet('tickets', tickets);
+        }
+
+        function calculateDaysOpen(dateString, status) {
+            if (status === 'Erledigt') return '-';
+            const created = new Date(dateString);
+            const now = new Date();
+            const diffTime = Math.abs(now - created);
+            return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        }
+
+        function getPrioColor(prio) {
+            if(prio === 'Hoch') return 'text-red-600 bg-red-100';
+            if(prio === 'Mittel') return 'text-amber-600 bg-amber-100';
+            return 'text-emerald-600 bg-emerald-100';
+        }
+
+        function renderTickets() {
+            const tbody = document.getElementById('ticketTableBody');
+            tbody.innerHTML = '';
+            
+            let openCount = 0;
+            let doneCount = 0;
+
+            tickets.forEach(ticket => {
+                if(ticket.status === 'Offen') openCount++;
+                else doneCount++;
+
+                const daysOpen = calculateDaysOpen(ticket.createdAt, ticket.status);
+                const statusClass = ticket.status === 'Offen' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700';
+                const progress = ticket.progress || 0;
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-4 py-3 font-mono text-slate-500 text-xs">${ticket.id}</td>
+                        <td class="px-4 py-3">
+                            <div class="font-medium text-slate-800">${ticket.title}</div>
+                            <div class="text-xs text-slate-400 mt-0.5">${ticket.type}</div>
+                        </td>
+                        <td class="px-4 py-3">
+                            <span class="px-2.5 py-1 rounded-full text-xs font-semibold ${statusClass}">${ticket.status}</span>
+                        </td>
+                        <td class="px-4 py-3">
+                            <span class="px-2.5 py-1 rounded-full text-xs font-bold ${getPrioColor(ticket.prio)}">${ticket.prio}</span>
+                        </td>
+                        <td class="px-4 py-3">
+                            <div class="flex items-center gap-2">
+                                <div class="w-20 bg-slate-200 rounded-full h-2">
+                                    <div class="bg-indigo-600 h-2 rounded-full" style="width: ${progress}%"></div>
+                                </div>
+                                <span class="text-xs text-slate-500 font-medium w-8">${progress}%</span>
+                            </div>
+                        </td>
+                        <td class="px-4 py-3 font-medium text-slate-600">${ticket.assignee}</td>
+                        <td class="px-4 py-3 text-slate-500">${daysOpen}</td>
+                        <td class="px-4 py-3 text-right space-x-2">
+                            <button onclick="toggleStatus('${ticket.id}')" class="text-xl hover:scale-110 transition-transform" title="Als ${ticket.status === 'Offen' ? 'Erledigt' : 'Offen'} markieren">
+                                ${ticket.status === 'Offen' ? '✅' : '⏪'}
+                            </button>
+                            <button onclick="openTicketModal('${ticket.id}')" class="text-xl hover:scale-110 transition-transform" title="Bearbeiten">✏️</button>
+                            <button onclick="deleteTicket('${ticket.id}')" class="text-xl hover:scale-110 transition-transform" title="Löschen">🗑️</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('stat-total').innerText = tickets.length;
+            document.getElementById('stat-open').innerText = openCount;
+            document.getElementById('stat-done').innerText = doneCount;
+        }
+
         // Init App
-        loadAllData();
+        initApp();
     </script>
 </body>
 </html>
