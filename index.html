@@ -28,9 +28,15 @@
     <!-- Hauptinhalt (anfangs unsichtbar) -->
     <div id="mainContent" class="opacity-0 p-4 md:p-8 max-w-7xl mx-auto space-y-10">
         
-        <!-- Header (jetzt ohne H1, da diese oben im Overlay ist) -->
-        <header class="text-center py-8">
-            <h1 class="text-3xl font-bold text-slate-800">Happy Wednesday</h1>
+        <!-- Header mit Link zum Ticket-System -->
+        <header class="py-8 flex justify-between items-center relative">
+            <div class="w-24"></div> <!-- Platzhalter für Zentrierung -->
+            <h1 class="text-3xl font-bold text-slate-800 text-center">Happy Wednesday</h1>
+            <div class="w-24 text-right">
+                <a href="tickets.html" class="inline-block bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-4 py-2 rounded-lg font-medium transition-colors text-sm whitespace-nowrap">
+                    🎟️ Ticket System
+                </a>
+            </div>
         </header>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
