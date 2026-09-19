@@ -27,6 +27,27 @@
 </head>
 <body>
 
+    <!-- LOGIN OVERLAY -->
+<div id="loginOverlay" class="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900 p-4">
+    <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-sm w-full text-center space-y-6">
+        <div>
+            <h2 class="text-2xl font-bold text-slate-800">Anmeldung</h2>
+            <p class="text-sm text-slate-500 mt-1">Bitte gib deine Zugangsdaten ein</p>
+        </div>
+        <form onsubmit="handleLogin(event)" class="space-y-4">
+            <input type="text" id="loginUser" placeholder="Benutzername" required 
+                class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
+            <input type="password" id="loginPass" placeholder="Passwort" required 
+                class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
+            <p id="loginError" class="text-red-500 text-xs hidden font-medium">Benutzername oder Passwort falsch!</p>
+            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg shadow-md transition-colors">
+                Einloggen
+            </button>
+        </form>
+    </div>
+</div>
+
+
     <!-- Start-Animation Overlay -->
     <div id="welcomeOverlay" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-50">
         <h1 class="text-5xl md:text-6xl font-black text-slate-900 tracking-tighter">Happy Wednesdays Club</h1>
@@ -295,22 +316,38 @@
         let currentPlayerName = "";
 
         // --- DATENBANK VERBINDUNG ---
-        async function initApp() {
-            const startTime = Date.now();
-            const dataLoad = loadAllData();
-            const elapsed = Date.now() - startTime;
-            if (elapsed < 3000) {
-                await new Promise(resolve => setTimeout(resolve, 3000 - elapsed));
-            }
+        // --- LOGIN KONFIGURATION ---
+const LOGIN_USER = "admin";    // <-- DEIN BENUTZERNAME
+const LOGIN_PASS = "geheim123"; // <-- DEIN PASSWORT
 
-            await dataLoad;
-            const overlay = document.getElementById('welcomeOverlay');
-            overlay.style.opacity = '0';
-            setTimeout(() => {
-                overlay.style.display = 'none';
-                document.getElementById('mainContent').style.opacity = '1';
-            }, 500);
-        }
+function checkAuth() {
+    // Falls der Nutzer bereits eingeloggt ist:
+    if (localStorage.getItem('isLoggedIn') === 'true') {
+        document.getElementById('loginOverlay').classList.add('hidden');
+        initApp();
+    }
+}
+
+function handleLogin(e) {
+    e.preventDefault();
+    const user = document.getElementById('loginUser').value.trim();
+    const pass = document.getElementById('loginPass').value.trim();
+    const errorEl = document.getElementById('loginError');
+
+    if (user === LOGIN_USER && pass === LOGIN_PASS) {
+        localStorage.setItem('isLoggedIn', 'true');
+        document.getElementById('loginOverlay').classList.add('hidden');
+        errorEl.classList.add('hidden');
+        initApp();
+    } else {
+        errorEl.classList.remove('hidden');
+    }
+}
+
+// Ergänze am Ende des Skripts (statt dem direkten Aufruf `initApp();` ganz unten):
+// Ersetze ganz unten `initApp();` durch:
+checkAuth();
+
 
         let myChart;
         function renderChart() {
