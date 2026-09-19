@@ -317,10 +317,12 @@
 
         // --- DATENBANK VERBINDUNG ---
         // --- LOGIN KONFIGURATION ---
-const LOGIN_USER = "admin";    // <-- DEIN BENUTZERNAME
-const LOGIN_PASS = "geheim123"; // <-- DEIN PASSWORT
+const LOGIN_USER = "Jesus";    // <-- DEIN BENUTZERNAME
+const LOGIN_PASS = "schwertfisch"; // <-- DEIN PASSWORT
 
-function checkAuth() {
+
+// --- DATENBANK VERBINDUNG ---
+        function checkAuth() {
     // Falls der Nutzer bereits eingeloggt ist:
     if (localStorage.getItem('isLoggedIn') === 'true') {
         document.getElementById('loginOverlay').classList.add('hidden');
@@ -344,8 +346,6 @@ function handleLogin(e) {
     }
 }
 
-// Ergänze am Ende des Skripts (statt dem direkten Aufruf `initApp();` ganz unten):
-// Ersetze ganz unten `initApp();` durch:
 // --- DATENBANK VERBINDUNG ---
 async function initApp() {
     const startTime = Date.now();
@@ -363,6 +363,7 @@ async function initApp() {
         document.getElementById('mainContent').style.opacity = '1';
     }, 500);
 }
+
 
 
 
