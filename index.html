@@ -23,17 +23,55 @@
         opacity: 1;
     }
     #mainContent { transition: opacity 0.5s ease-in-out; }
+
+    /* Animation für das Schloss-Symbol */
+.lock-icon {
+    transition: transform 0.4s ease, color 0.4s ease, stroke 0.4s ease;
+}
+
+/* Erfolgs-Shake & -Farbe */
+.lock-success {
+    color: #10b981 !important; /* Emerald 500 */
+    transform: scale(1.15);
+}
+
+/* Fehler-Shake (Wackeln) */
+.lock-error {
+    color: #ef4444 !important; /* Red 500 */
+    animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+@keyframes shake {
+    10%, 90% { transform: translate3d(-2px, 0, 0); }
+    20%, 80% { transform: translate3d(4px, 0, 0); }
+    30%, 50%, 70% { transform: translate3d(-6px, 0, 0); }
+    40%, 60% { transform: translate3d(6px, 0, 0); }
+}
+
 </style>
 </head>
 <body>
 
     <!-- LOGIN OVERLAY -->
-<div id="loginOverlay" class="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900 p-4">
+<!-- LOGIN OVERLAY -->
+<div id="loginOverlay" class="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900 p-4 transition-opacity duration-500">
     <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-sm w-full text-center space-y-6">
+        
+        <!-- Modernes Schloss-Icon -->
+        <div class="flex justify-center">
+            <div id="lockWrapper" class="p-4 bg-slate-50 rounded-full transition-colors duration-400">
+                <svg id="lockIcon" class="w-12 h-12 text-slate-700 lock-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <!-- Bügel des Schlosses -->
+                    <path id="lockShackle" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
+        </div>
+
         <div>
             <h2 class="text-2xl font-bold text-slate-800">Anmeldung</h2>
             <p class="text-sm text-slate-500 mt-1">Bitte gib deine Zugangsdaten ein</p>
         </div>
+        
         <form onsubmit="handleLogin(event)" class="space-y-4">
             <input type="text" id="loginUser" placeholder="Benutzername" required 
                 class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
@@ -46,6 +84,7 @@
         </form>
     </div>
 </div>
+
 
 
     <!-- Start-Animation Overlay -->
@@ -335,16 +374,47 @@ function handleLogin(e) {
     const user = document.getElementById('loginUser').value.trim();
     const pass = document.getElementById('loginPass').value.trim();
     const errorEl = document.getElementById('loginError');
+    const lockIcon = document.getElementById('lockIcon');
+    const lockWrapper = document.getElementById('lockWrapper');
+    const lockShackle = document.getElementById('lockShackle');
+
+    // Zurücksetzen eventueller alter Animationsklassen
+    lockIcon.classList.remove('lock-success', 'lock-error');
+    lockWrapper.classList.remove('bg-red-50', 'bg-emerald-50');
 
     if (user === LOGIN_USER && pass === LOGIN_PASS) {
         localStorage.setItem('isLoggedIn', 'true');
-        document.getElementById('loginOverlay').classList.add('hidden');
         errorEl.classList.add('hidden');
-        initApp();
+
+        // Erfolgs-Animation: Schloss springt auf & wird grün
+        lockIcon.classList.add('lock-success');
+        lockWrapper.classList.add('bg-emerald-50');
+        // SVG Pfad verändern, sodass der Bügel "offen" steht
+        lockShackle.setAttribute('d', 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v0h8z');
+
+        // Kurze Verzögerung, damit man die Animation sieht, bevor das Overlay ausblendet
+        setTimeout(() => {
+            const overlay = document.getElementById('loginOverlay');
+            overlay.classList.add('opacity-0');
+            setTimeout(() => {
+                overlay.classList.add('hidden');
+                initApp();
+            }, 400);
+        }, 600);
+
     } else {
+        // Fehler-Animation: Wackeln & rot werden
         errorEl.classList.remove('hidden');
+        lockIcon.classList.add('lock-error');
+        lockWrapper.classList.add('bg-red-50');
+
+        // Nach Abschluss der Rüttel-Animation Klasse wieder entfernen
+        setTimeout(() => {
+            lockIcon.classList.remove('lock-error');
+        }, 400);
     }
 }
+
 
 // --- DATENBANK VERBINDUNG ---
 async function initApp() {
