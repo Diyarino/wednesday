@@ -346,25 +346,24 @@ function handleLogin(e) {
 
 // Ergänze am Ende des Skripts (statt dem direkten Aufruf `initApp();` ganz unten):
 // Ersetze ganz unten `initApp();` durch:
-checkAuth();
-
-        // --- DATENBANK VERBINDUNG ---
+// --- DATENBANK VERBINDUNG ---
 async function initApp() {
-const startTime = Date.now();
-const dataLoad = loadAllData();
-const elapsed = Date.now() - startTime;
-if (elapsed < 3000) {
-await new Promise(resolve => setTimeout(resolve, 3000 - elapsed));
+    const startTime = Date.now();
+    const dataLoad = loadAllData();
+    const elapsed = Date.now() - startTime;
+    if (elapsed < 3000) {
+        await new Promise(resolve => setTimeout(resolve, 3000 - elapsed));
+    }
+
+    await dataLoad;
+    const overlay = document.getElementById('welcomeOverlay');
+    overlay.style.opacity = '0';
+    setTimeout(() => {
+        overlay.style.display = 'none';
+        document.getElementById('mainContent').style.opacity = '1';
+    }, 500);
 }
 
-await dataLoad;
-const overlay = document.getElementById('welcomeOverlay');
-overlay.style.opacity = '0';
-setTimeout(() => {
-overlay.style.display = 'none';
-document.getElementById('mainContent').style.opacity = '1';
-}, 500);
-}
 
 
         let myChart;
